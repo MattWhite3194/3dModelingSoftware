@@ -14,18 +14,74 @@
 #include "VBO.h"
 #include "EBO.h"
 #include "Model.h"
+#include "Texture.h"
+#include "Camera.h"
+
+const int width = 1000;
+const int height = 1000;
 
 GLfloat vertices[] = {
 	//x		y		z		//Texture coordinates
-	-0.5f, -0.5f, 0.0f,		0.0f, 0.0f,
-	-0.5f, 0.5f, 0.0f,		0.0f, 1.0f,
-	0.5f, 0.5f, 0.0f,		1.0f, 1.0f,
-	0.5f, -0.5f, 0.0f,		1.0f, 0.0f,
+	-0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // 0
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // 1
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // 2
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // 3
+
+    // Back face
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // 4
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // 5
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // 6
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // 7
+
+    // Top face
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f, // 8 (same as 3)
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // 9 (same as 2)
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // 10 (same as 6)
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // 11 (same as 7)
+    
+    // Bottom face
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // 12 (same as 0)
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // 13 (same as 1)
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // 14 (same as 5)
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // 15 (same as 4)
+
+    // Right face
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // 16 (same as 1)
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // 17 (same as 5)
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // 18 (same as 6)
+     0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // 19 (same as 2)
+
+    // Left face
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // 20 (same as 0)
+    -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // 21 (same as 4)
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // 22 (same as 7)
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f  // 23 (same as 3)
 };
 
 GLuint indices[] = {
-	0, 2, 1,
-	0, 3, 2
+	// Front face
+    0, 1, 2,
+    2, 3, 0,
+    
+    // Back face
+    4, 5, 6,
+    6, 7, 4,
+    
+    // Top face
+    8, 9, 10,
+    10, 11, 8,
+    
+    // Bottom face
+    12, 13, 14,
+    14, 15, 12,
+    
+    // Right face
+    16, 17, 18,
+    18, 19, 16,
+    
+    // Left face
+    20, 21, 22,
+    22, 23, 20
 
 };
 
@@ -46,7 +102,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	//create a new glfw window
-	GLFWwindow* window = glfwCreateWindow(1000, 1000, "ive made it textured....", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(1000, 1000, "Three cheers for the camera!!!!!!!!!!", NULL, NULL);
 	if (window == NULL) {
 		std::cout << "Failed to initialize glfw window";
 		glfwTerminate();
@@ -59,7 +115,7 @@ int main()
 	gladLoadGL();
 
 	//set glWiewport
-	glViewport(0, 0, 1000, 1000);
+	glViewport(0, 0, width, height);
 
 	VAO VAO1;
 	VAO1.Bind();
@@ -78,31 +134,15 @@ int main()
 	Shader basicShader("vert.vs", "frag.fs");
 
 
-	//Test texture
-	int widthImg, heightImg, numColCh;
-	stbi_set_flip_vertically_on_load(true);
-	unsigned char* bytes = stbi_load("MilitaryMeme.png", &widthImg, &heightImg, &numColCh, 0);
+	//Create and load new texture
+	Texture militaryMeme("MilitaryMeme.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
 
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	//bind a shader to the texture
+	militaryMeme.texUnit(basicShader, "tex0", 0);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glEnable(GL_DEPTH_TEST);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthImg, heightImg, 0, GL_RGBA, GL_UNSIGNED_BYTE, bytes);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	stbi_image_free(bytes);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	GLuint tex0Uni = glGetUniformLocation(basicShader.ID, "tex0");
-	basicShader.use();
-	glUniform1i(tex0Uni, 0);
+	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	//process loop
 	glfwMakeContextCurrent(window);
@@ -112,21 +152,19 @@ int main()
 
 		//render calls
 		//clear window to cornflower blue
-		glClearColor(100 / 255.0f, 149 / 255.0f, 237 / 255.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClearColor(0.7f, 0.7f, 0.2f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//use the compiled shader program
-		basicShader.use();
-		float timeValue = glfwGetTime();
-		float greenValue = sin(timeValue) / 2.0f + 0.5f;
-		float redValue = 1.0f - (sin(timeValue) / 2.0f + 0.5f);
-		float blueValue = cos(timeValue) / 2.0f + 0.5f;
-		basicShader.setVec4("ourColor", redValue, greenValue, blueValue, 1.0f);
-		glBindTexture(GL_TEXTURE_2D, texture);
+		camera.Inputs(window);
+		camera.Matrix(51.0f, 0.1f, 100.0f, basicShader, "camMatrix");
+
+		//bind the military man texture
+		//TODO: for no shading, make a default texture object
+		militaryMeme.Bind();
 
 		//render triangles
 		VAO1.Bind();
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, sizeof(indices)/sizeof(int), GL_UNSIGNED_INT, 0);
 
 		//swap buffers (i.e. draw the color data to the screen) and poll events
 		glfwSwapBuffers(window);
