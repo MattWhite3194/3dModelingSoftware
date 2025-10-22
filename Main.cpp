@@ -102,19 +102,23 @@ void processInput(GLFWwindow* window) {
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
-		if (firstMouse)
-		{
-			lastX = xpos;
-			lastY = ypos;
-			firstMouse = false;
-		}
-
-		float xoffset = xpos - lastX;
-		float yoffset = lastY - ypos;
+	if (firstMouse)
+	{
 		lastX = xpos;
 		lastY = ypos;
+		firstMouse = false;
+	}
+
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
+		
 		camera.ProcessMouseMovement(xoffset, yoffset);
+	}
+	else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS) {
+		camera.ProcessMousePanning(xoffset, yoffset);
 	}
 	else
 		firstMouse = true;

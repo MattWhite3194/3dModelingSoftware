@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <math.h>
 
 // Defines several possible options for camera movement. Used as abstraction to stay away from window-system specific input methods
 enum Camera_Movement {
@@ -17,7 +18,7 @@ enum Camera_Movement {
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
 const float SPEED = 2.5f;
-const float SENSITIVITY = 0.1f;
+const float SENSITIVITY = 0.2f;
 const float ZOOM = 1.0f;
 
 
@@ -39,6 +40,7 @@ public:
     // camera options
     float MovementSpeed;
     float MouseSensitivity = 2.0f;
+    float PanSpeed = 0.001f;
     float Zoom;
 
     // constructor with vectors
@@ -59,17 +61,10 @@ public:
     }
 
     // processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
-    void ProcessKeyboard(Camera_Movement direction, float deltaTime)
-    {
-        float velocity = MovementSpeed * deltaTime;
-        if (direction == FORWARD)
-            Position += Front * velocity;
-        if (direction == BACKWARD)
-            Position -= Front * velocity;
-        if (direction == LEFT)
-            Position -= Right * velocity;
-        if (direction == RIGHT)
-            Position += Right * velocity;
+    void ProcessMousePanning(float xoffset, float yoffset) {
+        Position += (Right * -(PanSpeed * Zoom * xoffset));
+        Position += (Up * -(PanSpeed * Zoom * yoffset));
+        updateCameraVectors();
     }
 
     // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
@@ -100,6 +95,9 @@ public:
         float baseSpeed = 0.1f; // tweak this constant
         float zoomSpeed = baseSpeed * glm::length(Front);
         Zoom += zoomSpeed * -yoffset;
+        if (Zoom < 0.01) {
+            Zoom = 0.01;
+        }
         updateCameraVectors();
     }
 
