@@ -33,24 +33,18 @@
     <ClCompile Include="stb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ObjectPrimitives.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectPrimitives.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_s.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VBO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="EBO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VAO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Model.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture.h">
+    <ClInclude Include="Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Camera.h">
@@ -61,10 +55,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="frag.fs">
+    <None Include="basicFrag.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="vert.vs">
+    <None Include="basicVert.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
     <None Include="packages.config" />

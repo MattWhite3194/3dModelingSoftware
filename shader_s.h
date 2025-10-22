@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <stb/stb_image.h>
+#include <glm/gtc/type_ptr.hpp>
 
 class Shader
 {
@@ -90,9 +91,16 @@ public:
         glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
     }
     // ------------------------------------------------------------------------
-    void setVec4(const std::string& name, float v0, float v1, float v2, float v3)
+    void setVec4(const std::string& name, glm::vec4 vector4)
     {
-        glUniform4f(glGetUniformLocation(ID, name.c_str()), v0, v1, v2, v3);
+        glUniform4fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(vector4));
+    }
+    void setVec3(const std::string& name, glm::vec3 vector3)
+    {
+        glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(vector3));
+    }
+    void setMat4(const std::string& name, glm::mat4 matrix4) {
+        glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(matrix4));
     }
 private:
     // utility function for checking shader compilation/linking errors.
