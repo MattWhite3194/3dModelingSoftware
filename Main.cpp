@@ -19,6 +19,10 @@
 
 const int width = 1000;
 const int height = 1000;
+bool firstMouse = true;
+double lastX, lastY, lastScrollY = 0.0f;
+Camera camera;
+glm::mat4 Projection = glm::perspective(glm::radians(51.0f), (float)(width / height), 0.1f, 100.0f);
 
 GLfloat vertices[] = {
 	//x		y		z		//Texture coordinates
@@ -91,6 +95,33 @@ std::vector<Model> sceneModels = {};
 void processInput(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+	Camera_Movement direction = FORWARD;
+
+}
+
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
+		if (firstMouse)
+		{
+			lastX = xpos;
+			lastY = ypos;
+			firstMouse = false;
+		}
+
+		float xoffset = xpos - lastX;
+		float yoffset = lastY - ypos;
+		lastX = xpos;
+		lastY = ypos;
+		camera.ProcessMouseMovement(xoffset, yoffset);
+	}
+	else
+		firstMouse = true;
+}
+
+void scroll_callback(GLFWwindow* window, double xpos, double ypos) {
+	camera.ProcessMouseScroll(ypos);
 }
 
 
@@ -110,6 +141,8 @@ int main()
 	}
 	//set the glfw context to the new window
 	glfwMakeContextCurrent(window);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 
 	//initialize glad
 	gladLoadGL();
@@ -142,8 +175,6 @@ int main()
 
 	glEnable(GL_DEPTH_TEST);
 
-	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 1.0f));
-
 	//process loop
 	glfwMakeContextCurrent(window);
 	while (!glfwWindowShouldClose(window)) {
@@ -155,8 +186,7 @@ int main()
 		glClearColor(0.7f, 0.7f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		camera.Inputs(window);
-		camera.Matrix(51.0f, 0.1f, 100.0f, basicShader, "camMatrix");
+		glUniformMatrix4fv(glGetUniformLocation(basicShader.ID, "camMatrix"), 1, GL_FALSE, glm::value_ptr(Projection * camera.GetViewMatrix() * glm::mat4(1.0f)));
 
 		//bind the military man texture
 		//TODO: for no shading, make a default texture object

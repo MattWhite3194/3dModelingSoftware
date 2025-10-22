@@ -7,12 +7,28 @@
 class VAO {
 public:
 	GLuint ID;
-	VAO();
+	VAO() {
+		glGenVertexArrays(1, &ID);
+	}
 
-	void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset);
-	void Bind();
-	void Unbind();
-	void Delete();
+	void LinkAttrib(VBO& VBO, GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset) {
+		VBO.Bind();
+		glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset);
+		glEnableVertexAttribArray(layout);
+		VBO.Unbind();
+	}
+
+	void Bind() {
+		glBindVertexArray(ID);
+	}
+
+	void Unbind() {
+		glBindVertexArray(0);
+	}
+
+	void Delete() {
+		glDeleteVertexArrays(1, &ID);
+	}
 };
 
 
