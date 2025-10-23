@@ -13,12 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Resource Files\Assets">
-      <UniqueIdentifier>{3d27db5c-3af1-4a0a-b8c1-7575d82672b3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Resource Files\Assets\Textures">
-      <UniqueIdentifier>{ae255445-b4ca-416e-97ec-f04789caa0c6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Resource Files\Shaders">
       <UniqueIdentifier>{6f8b54dc-4ad3-4cb4-a287-e3fd6438a73f}</UniqueIdentifier>
     </Filter>
@@ -39,6 +33,12 @@
     <ClCompile Include="ObjectPrimitives.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MeshUtilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_s.h">
@@ -53,6 +53,18 @@
     <ClInclude Include="Viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MeshUtilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Vertex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Face.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HalfEdge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="basicFrag.frag">
@@ -62,10 +74,5 @@
       <Filter>Resource Files\Shaders</Filter>
     </None>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\..\..\Desktop\MilitaryMeme.png">
-      <Filter>Resource Files\Assets\Textures</Filter>
-    </Image>
   </ItemGroup>
 </Project>
