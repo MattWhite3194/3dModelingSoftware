@@ -1,4 +1,4 @@
-//Library includes
+﻿//Library includes
 #include <iostream>
 #include <stdio.h>
 #include <vector>
@@ -21,6 +21,7 @@ double lastX, lastY, lastScrollY = 0.0f;
 Camera camera;
 glm::mat4 Projection = glm::perspective(glm::radians(51.0f), (float)(width / height), 0.1f, 100.0f);
 std::vector<Mesh> sceneMeshes = {};
+Mesh* currentSelectedMesh = nullptr;
 
 void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -53,16 +54,44 @@ void scroll_callback(GLFWwindow* window, double xpos, double ypos) {
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
 	if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
-		double flippedY = height - lastY;
-		glm::vec3 nearPoint = glm::unProject(glm::vec3(lastX, flippedY, 0.0f), camera.GetViewMatrix(), Projection, glm::vec4(0.0f, 0.0f, width, height));
-		glm::vec3 farPoint = glm::unProject(glm::vec3(lastX, flippedY, 1.0f), camera.GetViewMatrix(), Projection, glm::vec4(0.0f, 0.0f, width, height));
+		float x = (2.0f * lastX) / width - 1.0f;
+		float y = 1.0f - (2.0f * lastY) / height;
 
-		glm::vec3 dir = glm::normalize(nearPoint - farPoint);
+		glm::vec4 rayClip(x, y, -1.0f, 1.0f);
+
+		glm::vec4 rayEye = glm::inverse(Projection) * rayClip;
+		rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+
+		glm::vec3 rayDir = glm::normalize(
+			glm::vec3(glm::inverse(camera.GetViewMatrix()) * rayEye)
+		);
 		glm::vec3 origin = camera.ZoomPosition;
 
 		Mesh* selected = nullptr;
+		Face* selectedFace = nullptr;
+		float closestDistance = FLT_MAX;
+		//Iterate through all the meshes and select the mesh that was intersected closest to the camera
 		for (std::vector<Mesh>::iterator Mesh = sceneMeshes.begin(); Mesh != sceneMeshes.end(); ++Mesh) {
-			
+			float dist;
+			Face* face;
+			if (PickMesh(*Mesh, origin, rayDir, dist, face)) {
+				std::cout << dist << std::endl;
+				if (dist < closestDistance) {
+					selected = &*Mesh;
+					closestDistance = dist;
+					selectedFace = face;
+				}
+			}
+		}
+		if (currentSelectedMesh) {
+			currentSelectedMesh->selected = false;
+		}
+		if (selected) {
+			selected->selected = true;
+			currentSelectedMesh = selected;
+		}
+		else {
+			currentSelectedMesh = nullptr;
 		}
 	}
 }
@@ -109,25 +138,23 @@ int main()
 
 	//Add Light Source (for visualization)
 	sceneMeshes.push_back(CreateCube());
-	sceneMeshes[1].Scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+	sceneMeshes[1].ScaleBy(glm::vec3(0.1f, 0.1f, 0.1f));
 	sceneMeshes[1].ObjectColor = glm::vec4(0.7f, 0.7f, 0.0f, 1.0f);
+	sceneMeshes[1].Translate(lightPos);
 
 	while (!glfwWindowShouldClose(window)) {
 
-		//render calls
-		//clear window to cornflower blue
+		//clear viewport
 		glClearColor(0.2f, 0.2f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//set shader transforms
 		basicShader.use();
-		float time = glfwGetTime(); // or your own time variable
-		float angle = time * glm::radians(30.0f); // 30 degrees per second
-		glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-		glm::vec3 rotatedLightPos = glm::vec3(rotation * glm::vec4(lightPos, 1.0f));
 		basicShader.setVec3("lightPos", glm::vec3(glm::vec4(camera.ZoomPosition, 1.0f) * glm::rotate(glm::mat4(1.0f), glm::radians<float>(45.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
 		basicShader.setMat4("projection", Projection);
 		basicShader.setMat4("view", camera.GetViewMatrix());
 
-		sceneMeshes[1].Translation = glm::translate(glm::mat4(1.0f), rotatedLightPos);
+		//draw meshes
+		sceneMeshes[1].Rotate(glm::vec3(0.0f, 0.001f, 0.0f));
 		for (std::vector<Mesh>::iterator Mesh = sceneMeshes.begin(); Mesh != sceneMeshes.end(); ++Mesh) {
 			Mesh->Draw(basicShader);
 		}

@@ -63,7 +63,7 @@ Face* Mesh::addFace(const std::vector<Vertex*>& verts) {
 void Mesh::RebuildRenderData() {
     renderPositions.clear();
     renderIndices.clear();
-    MeshToTriangles(*this, renderPositions, renderNormals, renderIndices);
+    MeshToTriangles(*this, renderPositions, renderNormals, renderIndices, edgeIndices);
     gpuDirty = true;
 }
 
@@ -73,11 +73,12 @@ void Mesh::UploadToGPU()
 
     // Compute normals first
     ComputeNormals(*this);
-    MeshToTriangles(*this, renderPositions, renderNormals, renderIndices);
+    MeshToTriangles(*this, renderPositions, renderNormals, renderIndices, edgeIndices);
 
     if (!vao) glGenVertexArrays(1, &vao);
     if (!vbo) glGenBuffers(1, &vbo);
     if (!ebo) glGenBuffers(1, &ebo);
+    if (!eboEdges) glGenBuffers(1, &eboEdges);
 
     struct VertexData {
         glm::vec3 pos;
@@ -104,6 +105,12 @@ void Mesh::UploadToGPU()
         renderIndices.data(),
         GL_STATIC_DRAW);
 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboEdges);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+        edgeIndices.size() * sizeof(unsigned int),
+        edgeIndices.data(),
+        GL_STATIC_DRAW);
+
     // Position attribute (location = 0)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)0);
     glEnableVertexAttribArray(0);
@@ -121,18 +128,18 @@ void Mesh::Draw(Shader& shader) {
         RebuildRenderData(), UploadToGPU();
 
     glUseProgram(shader.ID);
-
-    GLint modelLoc = glGetUniformLocation(shader.ID, "model");
-    GLint colorLoc = glGetUniformLocation(shader.ID, "objectColor");
-
-    glm::mat4 model = GetModelMatrix();
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniform4fv(colorLoc, 1, glm::value_ptr(ObjectColor));
+    shader.setMat4("model", GetModelMatrix());
+    shader.setVec4("objectColor", ObjectColor);
 
     //Draw Faces
     glBindVertexArray(vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glDrawElements(GL_TRIANGLES, renderIndices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
 
     //TODO: Draw Edges
+    glLineWidth(1.5f);
+    shader.setVec4("objectColor", selected ? glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) : glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboEdges);
+    glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
