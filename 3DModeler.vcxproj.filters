@@ -39,6 +39,27 @@
     <ClCompile Include="Mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="extern\imgui\imgui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="extern\imgui\imgui_draw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="extern\imgui\imgui_tables.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="extern\imgui\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="extern\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="extern\imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Viewport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader_s.h">
@@ -67,12 +88,18 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="basicFrag.frag">
+    <None Include="objectFrag.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="basicVert.vert">
+    <None Include="objectVert.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="viewportFrag.frag">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="viewportVert.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

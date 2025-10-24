@@ -20,9 +20,15 @@ public:
     std::vector<HalfEdge*> halfEdges;
     std::vector<Face*> faces;
 
+    //Transformations
+    glm::vec3 Scale = glm::vec3(1.0f);
+    glm::vec3 Rotation = glm::vec3(0.0f);
+    glm::vec3 Translation = glm::vec3(0.0f);
+
     //Drawing
     GLuint vao = 0, vbo = 0, ebo = 0, eboEdges = 0;
     bool gpuDirty = true; // needs to re-upload?
+    bool transformDirty = false;
     std::vector<glm::vec3> renderPositions;
     std::vector<unsigned int> renderIndices;
     std::vector<glm::vec3> renderNormals;
@@ -51,34 +57,20 @@ public:
         Translation += translation;
         UpdateModelMatrix();
     }
-    glm::vec3 GetScale() {
-        return Scale;
-    }
-    glm::vec3 GetTranslation() {
-        return Translation;
-    }
-    glm::vec3 GetRotation() {
-        return Rotation;
-    }
 private:
     //Transformations
-    glm::vec3 Scale = glm::vec3(1.0f);
-    glm::vec3 Rotation = glm::vec3(0.0f);
-    glm::vec3 Translation = glm::vec3(1.0f);
     glm::mat4 Model = glm::mat4(1.0f);
     void UpdateModelMatrix() {
         glm::mat4 model(1.0f);
 
-        // Scale
+        model = glm::translate(model, Translation);
+
         model = glm::scale(model, Scale);
 
         // Rotation (Z * Y * X is standard)
-        model = glm::rotate(model, Rotation.z, glm::vec3(0, 0, 1));
-        model = glm::rotate(model, Rotation.y, glm::vec3(0, 1, 0));
-        model = glm::rotate(model, Rotation.x, glm::vec3(1, 0, 0));
-
-        // Translation (last step!)
-        model = glm::translate(model, Translation);
+        model = glm::rotate(model, glm::radians<float>(Rotation.z), glm::vec3(0, 0, 1));
+        model = glm::rotate(model, glm::radians<float>(Rotation.y), glm::vec3(0, 1, 0));
+        model = glm::rotate(model, glm::radians<float>(Rotation.x), glm::vec3(1, 0, 0));
 
         Model = model;
     }

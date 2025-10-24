@@ -6,6 +6,12 @@
 #include <GLFW/glfw3.h>
 #include <stb/stb_image.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
+
+//UI Framework
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 //Local includes
 #include "shader_s.h"
@@ -13,18 +19,24 @@
 #include "Mesh.h"
 #include "ObjectPrimitives.h"
 #include "MeshUtilities.h"
+#include "Viewport.h"
 
 const int width = 1000;
 const int height = 1000;
 bool firstMouse = true;
 double lastX, lastY, lastScrollY = 0.0f;
 Camera camera;
+Viewport* viewport;
 glm::mat4 Projection = glm::perspective(glm::radians(51.0f), (float)(width / height), 0.1f, 100.0f);
 std::vector<Mesh> sceneMeshes = {};
 Mesh* currentSelectedMesh = nullptr;
 
 void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.WantCaptureMouse) {
+		return;
+	}
 	if (firstMouse)
 	{
 		lastX = xpos;
@@ -53,6 +65,10 @@ void scroll_callback(GLFWwindow* window, double xpos, double ypos) {
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.WantCaptureMouse) {
+		return;
+	}
 	if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
 		float x = (2.0f * lastX) / width - 1.0f;
 		float y = 1.0f - (2.0f * lastY) / height;
@@ -96,10 +112,29 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	}
 }
 
+void DisplaySelectedMeshWindow() {
+	ImGui::Begin("Mesh");                          // Create a window called "Hello, world!" and append into it.
+
+	if (ImGui::DragFloat3("Translation", glm::value_ptr(currentSelectedMesh->Translation), 0.1f)) {
+		currentSelectedMesh->transformDirty = true;
+	}
+	if (ImGui::DragFloat3("Rotation", glm::value_ptr(currentSelectedMesh->Rotation), 0.1f)) {
+		currentSelectedMesh->transformDirty = true;
+	}
+	if (ImGui::DragFloat3("Scale", glm::value_ptr(currentSelectedMesh->Scale), 0.1f)) {
+		currentSelectedMesh->transformDirty = true;
+	}
+	if (ImGui::Checkbox("Flat Shading", &currentSelectedMesh->flatShading)) {
+		currentSelectedMesh->gpuDirty = !currentSelectedMesh->gpuDirty;
+	}
+	ImGui::ColorEdit4("Object Color", glm::value_ptr(currentSelectedMesh->ObjectColor));
+	
+	ImGui::End();
+}
+
 
 int main() 
 {
-	//TODO: VIEWPORT LIGHT POSITION IS CAMERA POSITION
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -112,6 +147,7 @@ int main()
 		glfwTerminate();
 		return -1;
 	}
+
 	//set the glfw context to the new window
 	glfwMakeContextCurrent(window);
 	glfwSetCursorPosCallback(window, cursor_pos_callback);
@@ -121,14 +157,24 @@ int main()
 	//initialize glad
 	gladLoadGL();
 
+	//Set up Imgui
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+	ImGui_ImplOpenGL3_Init("#version 130");
+
 	//set glWiewport
 	glViewport(0, 0, width, height);
 	
 
 	//Create shaders
-	Shader basicShader("basicVert.vert", "basicFrag.frag");
+	Shader objectShader("objectVert.vert", "objectFrag.frag");
+	Shader viewportShader("viewportVert.vert", "viewportFrag.frag");
 	glm::vec3 lightPos(1.2f, 1.0f, 10.0f);
-	glEnable(GL_DEPTH_TEST);
 
 	//process loop
 	glfwMakeContextCurrent(window);
@@ -140,29 +186,62 @@ int main()
 	sceneMeshes.push_back(CreateCube());
 	sceneMeshes[1].ScaleBy(glm::vec3(0.1f, 0.1f, 0.1f));
 	sceneMeshes[1].ObjectColor = glm::vec4(0.7f, 0.7f, 0.0f, 1.0f);
-	sceneMeshes[1].Translate(lightPos);
+	//sceneMeshes[1].Translate(lightPos);
+	static float f = 0.0f;
+	static int counter = 0;
 
+	glEnable(GL_DEPTH_TEST);
+	//initiate viewport
+	viewport = new Viewport();
 	while (!glfwWindowShouldClose(window)) {
+		glfwPollEvents();
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+
+		//TEST: Imgui testing
+		
+		if (currentSelectedMesh) {
+			DisplaySelectedMeshWindow();
+		}
+		
+
+
+		//Viewport Rendering
 
 		//clear viewport
 		glClearColor(0.2f, 0.2f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		//set shader transforms
-		basicShader.use();
-		basicShader.setVec3("lightPos", glm::vec3(glm::vec4(camera.ZoomPosition, 1.0f) * glm::rotate(glm::mat4(1.0f), glm::radians<float>(45.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
-		basicShader.setMat4("projection", Projection);
-		basicShader.setMat4("view", camera.GetViewMatrix());
+		
+		//ENSURE THE SHADER IS ACTIVE BEFORE SETTING VARIABLES, 30 MINUTES OF HEADACHES AND WASTED TIME
+		viewportShader.use();
+		viewportShader.setMat4("projection", Projection);
+		viewportShader.setMat4("view", camera.GetViewMatrix());
 
+		//Draw viewport
+		viewport->Draw(viewportShader);
+
+		objectShader.use();
+		objectShader.setVec3("lightPos", glm::vec3(glm::vec4(camera.ZoomPosition, 1.0f) * glm::rotate(glm::mat4(1.0f), glm::radians<float>(45.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
+		objectShader.setMat4("projection", Projection);
+		objectShader.setMat4("view", camera.GetViewMatrix());
 		//draw meshes
-		sceneMeshes[1].Rotate(glm::vec3(0.0f, 0.001f, 0.0f));
+		//sceneMeshes[1].Rotate(glm::vec3(0.0f, 0.001f, 0.0f));
 		for (std::vector<Mesh>::iterator Mesh = sceneMeshes.begin(); Mesh != sceneMeshes.end(); ++Mesh) {
-			Mesh->Draw(basicShader);
+			Mesh->Draw(objectShader);
 		}
 
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		glfwSwapBuffers(window);
-		glfwPollEvents();
 	}
 
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;

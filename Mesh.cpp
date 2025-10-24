@@ -126,8 +126,10 @@ void Mesh::UploadToGPU()
 void Mesh::Draw(Shader& shader) {
     if (gpuDirty)
         RebuildRenderData(), UploadToGPU();
+    if (transformDirty)
+        UpdateModelMatrix();
 
-    glUseProgram(shader.ID);
+    shader.use();
     shader.setMat4("model", GetModelMatrix());
     shader.setVec4("objectColor", ObjectColor);
 
@@ -141,5 +143,6 @@ void Mesh::Draw(Shader& shader) {
     shader.setVec4("objectColor", selected ? glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) : glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboEdges);
     glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
