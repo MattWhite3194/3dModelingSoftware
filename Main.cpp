@@ -12,6 +12,8 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "imgui_theme.h"
+#include "imgui_internal.h"
 
 //Local includes
 #include "shader_s.h"
@@ -23,6 +25,16 @@
 
 Viewport* viewport;
 ImVec2 viewportCursorPos = ImVec2(0, 0);
+ImGuiWindowFlags host_flags =
+ImGuiWindowFlags_NoTitleBar |
+ImGuiWindowFlags_NoCollapse |
+ImGuiWindowFlags_NoResize |
+ImGuiWindowFlags_NoMove |
+ImGuiWindowFlags_NoBringToFrontOnFocus |
+ImGuiWindowFlags_NoNavFocus |
+ImGuiWindowFlags_NoBackground | // remove gray background
+ImGuiWindowFlags_NoScrollWithMouse | // stop scroll detection inside dockspace
+ImGuiWindowFlags_NoScrollbar;
 
 void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -49,23 +61,65 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	viewport->mouse_button_callback(window, button, action, mods);
 }
 
-void DisplaySelectedMeshWindow() {
-	ImGui::Begin("Mesh");                          // Create a window called "Hello, world!" and append into it.
-	if (viewport->currentSelectedMesh) {
-		if (ImGui::DragFloat3("Translation", glm::value_ptr(viewport->currentSelectedMesh->Translation), 0.1f)) {
-			viewport->currentSelectedMesh->transformDirty = true;
+void DrawToolWindow() {
+	ImGui::Begin("Tools");
+
+
+	if (ImGui::BeginTabBar("Mesh Tools"))
+	{
+		if (viewport->currentSelectedMesh) {
+			//Mesh transformations tab
+			if (ImGui::BeginTabItem("Mesh")) {
+
+				bool changed = false;
+				//GLobal transformations
+				ImGui::Text("Translation:");
+				ImGui::PushItemWidth(-1);
+				changed |= ImGui::DragFloat("##01", &viewport->currentSelectedMesh->Translation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
+				changed |= ImGui::DragFloat("##02", &viewport->currentSelectedMesh->Translation.z, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##03", &viewport->currentSelectedMesh->Translation.y, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				ImGui::PopItemWidth();
+				ImGui::Text("Rotation:");
+				ImGui::PushItemWidth(-1);
+				changed |= ImGui::DragFloat("##04", &viewport->currentSelectedMesh->Rotation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
+				changed |= ImGui::DragFloat("##05", &viewport->currentSelectedMesh->Rotation.z, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##06", &viewport->currentSelectedMesh->Rotation.y, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				ImGui::PopItemWidth();
+				ImGui::Text("Scale:");
+				ImGui::PushItemWidth(-1);
+				changed |= ImGui::DragFloat("##07", &viewport->currentSelectedMesh->Scale.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
+				changed |= ImGui::DragFloat("##08", &viewport->currentSelectedMesh->Scale.z, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##09", &viewport->currentSelectedMesh->Scale.y, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				ImGui::PopItemWidth();
+				if (changed) {
+					viewport->currentSelectedMesh->transformDirty = true;
+				}
+
+				if (ImGui::Checkbox("Flat Shading", &viewport->currentSelectedMesh->flatShading)) {
+					viewport->currentSelectedMesh->gpuDirty = !viewport->currentSelectedMesh->gpuDirty;
+				}
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(viewport->currentSelectedMesh->ObjectColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_DisplayHex);
+				ImGui::EndTabItem();
+			}
+			//mesh modifiers tab
+			if (ImGui::BeginTabItem("Modify")) {
+				ImGui::Button("Flip Normals");
+				ImGui::Button("Subdivide");
+				ImGui::Button("Duplicate");
+				ImGui::Button("Delete");
+				ImGui::EndTabItem();
+			}
 		}
-		if (ImGui::DragFloat3("Rotation", glm::value_ptr(viewport->currentSelectedMesh->Rotation), 0.1f)) {
-			viewport->currentSelectedMesh->transformDirty = true;
+		if (ImGui::BeginTabItem("Create")) {
+			ImGui::Button("New Cube");
+			ImGui::Button("New Circle");
+			ImGui::Button("New Cylinder");
+			ImGui::Button("New Cone");
+			ImGui::EndTabItem();
 		}
-		if (ImGui::DragFloat3("Scale", glm::value_ptr(viewport->currentSelectedMesh->Scale), 0.1f)) {
-			viewport->currentSelectedMesh->transformDirty = true;
-		}
-		if (ImGui::Checkbox("Flat Shading", &viewport->currentSelectedMesh->flatShading)) {
-			viewport->currentSelectedMesh->gpuDirty = !viewport->currentSelectedMesh->gpuDirty;
-		}
-		ImGui::ColorEdit4("Object Color", glm::value_ptr(viewport->currentSelectedMesh->ObjectColor));
+		ImGui::EndTabBar();
 	}
+
 	ImGui::End();
 }
 
@@ -75,6 +129,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_SAMPLES, 4);
 
 	//create a new glfw window
 	GLFWwindow* window = glfwCreateWindow(1400, 1000, "Doing a frame swap.", NULL, NULL);
@@ -86,8 +141,6 @@ int main()
 
 	//set the glfw context to the new window
 	glfwMakeContextCurrent(window);
-	//
-	//
 
 	//initialize glad
 	gladLoadGL();
@@ -103,6 +156,10 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
 	ImGui_ImplOpenGL3_Init("#version 130");
 
+	//Load ImGui font
+	ImGui::GetIO().Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 8.0f);
+	io.FontDefault = io.Fonts->Fonts.back();
+
 	//process loop
 	glfwMakeContextCurrent(window);
 
@@ -112,20 +169,54 @@ int main()
 	glfwSetCursorPosCallback(window, cursor_pos_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
-	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_MULTISAMPLE);
+	SetupImGuiStyle();
+	bool first_time = true;
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::DockSpaceOverViewport();
+		ImGuiID dockspace_id = ImGui::GetID("RootDockspace");
 
-		//TEST: Imgui testing
-		
-		DisplaySelectedMeshWindow();
-		
-		//TODO: Viewport Rendering
-		ImGui::Begin("Viewport");
+		if (first_time)
+		{
+			first_time = false;
+
+			ImGui::DockBuilderRemoveNode(dockspace_id);
+			ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_None);
+
+			// Split: bottom gets 25% height
+			ImGuiID dock_main = dockspace_id;
+			ImGuiID dock_right;
+			ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, 0.25f, &dock_right, &dock_main);
+
+			// Assign windows
+			ImGui::DockBuilderDockWindow("Viewport", dock_main);
+			ImGui::DockBuilderDockWindow("Tools", dock_right);
+
+			ImGui::DockBuilderFinish(dockspace_id);
+		}
+		const ImGuiViewport* viewport_imgui = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport_imgui->WorkPos);
+		ImGui::SetNextWindowSize(viewport_imgui->WorkSize);
+		ImGui::SetNextWindowViewport(viewport_imgui->ID);
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::Begin("RootDockspaceWindow", nullptr, host_flags);
+		ImGui::PopStyleVar(3);
+
+		ImGui::DockSpace(dockspace_id, ImVec2(0, 0),
+			ImGuiDockNodeFlags_AutoHideTabBar | ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_NoTabBar);
+
+		ImGui::BeginMainMenuBar();
+		ImGui::MenuItem("File");
+		ImGui::EndMainMenuBar();
+		ImGui::End();
+
+		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 		ImVec2 mousePos = ImGui::GetMousePos();
 		ImVec2 winPos = ImGui::GetWindowPos();
 		ImVec2 curPos = ImGui::GetCursorPos(); 
@@ -141,7 +232,12 @@ int main()
 		viewport->Draw();
 		ImGui::Image((ImTextureID)(intptr_t)viewport->fboTexture, size,
 			ImVec2(0, 1), ImVec2(1, 0)); // Flip vertically
+
+		//END MAIN WINDOW DRAW
 		ImGui::End();
+
+		DrawToolWindow();
+
 		ImGui::Render();
 		int display_w, display_h;
 		glfwGetFramebufferSize(window, &display_w, &display_h);

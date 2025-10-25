@@ -138,7 +138,6 @@ void Mesh::Draw(Shader& shader) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glDrawElements(GL_TRIANGLES, renderIndices.size(), GL_UNSIGNED_INT, 0);
 
-    //TODO: Draw Edges
     glLineWidth(1.5f);
     shader.setVec4("objectColor", selected ? glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) : glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboEdges);

@@ -31,7 +31,7 @@ void Viewport::InitGrid() {
 }
 
 void Viewport::InitShaders() {
-	sceneMeshes.push_back(CreateCube());
+	sceneMeshes.push_back(CreateCylinder(12, 1, 5));
 	viewportCamera = new Camera();
 	std::cout << glm::to_string(viewportCamera->ZoomPosition) << " " << glm::to_string(viewportCamera->Front) << std::endl;
 	objectShader = new Shader("objectVert.vert", "objectFrag.frag");
@@ -53,7 +53,6 @@ void Viewport::ResizeViewportFramebuffer(int width, int height) {
 }
 
 void Viewport::CreateViewportFramebuffer() {
-	std::cout << "creating viewport buffer" << std::endl;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 

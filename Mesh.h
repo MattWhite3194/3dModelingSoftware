@@ -15,10 +15,13 @@ struct Face;
 
 class Mesh {
 public:
+    //TODO: Object only has one stored vec3 per transformation
+    //transformations along axis are affected by objects rotation, only affects the single model matrix.
     //Mesh Data
     std::vector<Vertex*> vertices;
     std::vector<HalfEdge*> halfEdges;
     std::vector<Face*> faces;
+    char* name;
 
     //Transformations
     glm::vec3 Scale = glm::vec3(1.0f);
@@ -65,12 +68,11 @@ private:
 
         model = glm::translate(model, Translation);
 
-        model = glm::scale(model, Scale);
-
-        // Rotation (Z * Y * X is standard)
         model = glm::rotate(model, glm::radians<float>(Rotation.z), glm::vec3(0, 0, 1));
         model = glm::rotate(model, glm::radians<float>(Rotation.y), glm::vec3(0, 1, 0));
         model = glm::rotate(model, glm::radians<float>(Rotation.x), glm::vec3(1, 0, 0));
+
+        model = glm::scale(model, Scale);
 
         Model = model;
     }
