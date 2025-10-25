@@ -61,6 +61,14 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 	viewport->mouse_button_callback(window, button, action, mods);
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+	if (ImGui::GetIO().WantCaptureKeyboard && !viewport->IsActive) {
+		return;
+	}
+	viewport->key_callback(window, key, scancode, action, mods);
+}
+
 void DrawToolWindow() {
 	ImGui::Begin("Tools");
 
@@ -76,20 +84,20 @@ void DrawToolWindow() {
 				ImGui::Text("Translation:");
 				ImGui::PushItemWidth(-1);
 				changed |= ImGui::DragFloat("##01", &viewport->currentSelectedMesh->Translation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
-				changed |= ImGui::DragFloat("##02", &viewport->currentSelectedMesh->Translation.z, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
-				changed |= ImGui::DragFloat("##03", &viewport->currentSelectedMesh->Translation.y, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				changed |= ImGui::DragFloat("##02", &viewport->currentSelectedMesh->Translation.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##03", &viewport->currentSelectedMesh->Translation.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
 				ImGui::PopItemWidth();
 				ImGui::Text("Rotation:");
 				ImGui::PushItemWidth(-1);
 				changed |= ImGui::DragFloat("##04", &viewport->currentSelectedMesh->Rotation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
-				changed |= ImGui::DragFloat("##05", &viewport->currentSelectedMesh->Rotation.z, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
-				changed |= ImGui::DragFloat("##06", &viewport->currentSelectedMesh->Rotation.y, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				changed |= ImGui::DragFloat("##05", &viewport->currentSelectedMesh->Rotation.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##06", &viewport->currentSelectedMesh->Rotation.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
 				ImGui::PopItemWidth();
 				ImGui::Text("Scale:");
 				ImGui::PushItemWidth(-1);
 				changed |= ImGui::DragFloat("##07", &viewport->currentSelectedMesh->Scale.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
-				changed |= ImGui::DragFloat("##08", &viewport->currentSelectedMesh->Scale.z, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
-				changed |= ImGui::DragFloat("##09", &viewport->currentSelectedMesh->Scale.y, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				changed |= ImGui::DragFloat("##08", &viewport->currentSelectedMesh->Scale.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##09", &viewport->currentSelectedMesh->Scale.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
 				ImGui::PopItemWidth();
 				if (changed) {
 					viewport->currentSelectedMesh->transformDirty = true;
@@ -166,9 +174,12 @@ int main()
 	//initiate viewport
 	viewport = new Viewport();
 	viewport->CreateViewportFramebuffer();
+	//set button callbacks
 	glfwSetCursorPosCallback(window, cursor_pos_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
+	glfwSetKeyCallback(window, key_callback);
+
 	glEnable(GL_MULTISAMPLE);
 	SetupImGuiStyle();
 	bool first_time = true;

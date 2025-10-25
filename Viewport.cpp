@@ -9,12 +9,12 @@ void Viewport::InitGrid() {
 
 	for (int i = -half; i <= half; i++) {
 		//line size of GRID_SIZE parallel to X-axis
-		gridVertices.push_back(glm::vec3(i, 0, -half));
-		gridVertices.push_back(glm::vec3(i, 0, half));
+		gridVertices.push_back(glm::vec3(i, -half, 0));
+		gridVertices.push_back(glm::vec3(i, half,0));
 
 		//line size of GRID_SIZE parallel to Z-axis
-		gridVertices.push_back(glm::vec3(-half, 0, i));
-		gridVertices.push_back(glm::vec3(half, 0, i));
+		gridVertices.push_back(glm::vec3(-half, i, 0));
+		gridVertices.push_back(glm::vec3(half, i, 0));
 	}
 
 	glGenVertexArrays(1, &gridVao);
@@ -179,6 +179,14 @@ void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action,
 		}
 		else {
 			currentSelectedMesh = nullptr;
+		}
+	}
+}
+
+void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+		if (currentSelectedMesh) {
+			viewportCamera->SetFocus(currentSelectedMesh->Translation, 10.0f);
 		}
 	}
 }

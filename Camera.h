@@ -8,7 +8,7 @@
 
 // Default camera values
 const float YAW = -90.0f;
-const float PITCH = 0.0f;
+const float PITCH = -45.0f;
 const float SPEED = 2.5f;
 const float SENSITIVITY = 0.2f;
 const float ZOOM = 1.0f;
@@ -25,7 +25,6 @@ public:
     glm::vec3 Up;
     glm::vec3 Right;
     glm::vec3 WorldUp;
-    glm::mat4 Projection;
     // euler Angles
     float Yaw;
     float Pitch;
@@ -36,7 +35,7 @@ public:
     float Zoom = 5.0f;
 
     // constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY)
+    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 0.0f, 1.0f), float yaw = YAW, float pitch = PITCH) : Front(glm::vec3(0.0f, 0.0f, 0.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY)
     {
         Position = position;
         ZoomPosition = position;
@@ -81,10 +80,16 @@ public:
         updateCameraVectors();
     }
 
+    void SetFocus(glm::vec3 position, float zoom) {
+        Position = position;
+        Zoom = zoom;
+        updateCameraVectors();
+    }
+
     // processes input received from a mouse scroll-wheel event. Only requires input on the vertical wheel-axis
     void ProcessMouseScroll(float yoffset)
     {
-        float baseSpeed = 0.1f; // tweak this constant
+        float baseSpeed = 0.4f; // tweak this constant
         float zoomSpeed = baseSpeed * glm::length(Front);
         Zoom += zoomSpeed * -yoffset;
         if (Zoom < 0.01) {
@@ -99,9 +104,9 @@ private:
     {
         // calculate the new Front vector
         glm::vec3 front;
-        front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-        front.y = sin(glm::radians(Pitch));
-        front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+        front.x = cos(glm::radians(Pitch)) * cos(glm::radians(-Yaw));
+        front.y = cos(glm::radians(Pitch)) * sin(glm::radians(-Yaw));
+        front.z = sin(glm::radians(Pitch));
         Front = glm::normalize(front);
         // also re-calculate the Right and Up vector
         Right = glm::normalize(glm::cross(Front, WorldUp));  // normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
