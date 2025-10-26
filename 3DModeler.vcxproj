@@ -196,11 +196,14 @@
     <ClInclude Include="Viewport.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="edgeFrag.frag" />
+    <None Include="edgeGeom.geom" />
+    <None Include="edgeVert.vert" />
+    <None Include="gridFrag.frag" />
+    <None Include="gridVert.vert" />
     <None Include="objectFrag.frag" />
     <None Include="packages.config" />
     <None Include="objectVert.vert" />
-    <None Include="viewportFrag.frag" />
-    <None Include="viewportVert.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

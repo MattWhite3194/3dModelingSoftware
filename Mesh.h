@@ -60,6 +60,7 @@ public:
     void RebuildRenderData();
     void UploadToGPU();
     void Draw(Shader& shader);
+    void DrawEdges(Shader& shader);
     void ScaleBy(glm::vec3 factor) {
         Scale *= factor;
         UpdateModelMatrix();

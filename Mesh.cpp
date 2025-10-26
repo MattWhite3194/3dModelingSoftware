@@ -128,6 +128,7 @@ void Mesh::Draw(Shader& shader) {
         UpdateModelMatrix();
 
     shader.use();
+    shader.setBool("lightingEnabled", true);
     shader.setMat4("model", GetModelMatrix());
     shader.setVec4("objectColor", ObjectColor);
 
@@ -136,10 +137,28 @@ void Mesh::Draw(Shader& shader) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glDrawElements(GL_TRIANGLES, renderIndices.size(), GL_UNSIGNED_INT, 0);
 
-    glLineWidth(1.5f);
-    shader.setVec4("objectColor", selected ? glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) : glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void Mesh::DrawEdges(Shader& shader) {
+    if (gpuDirty)
+        RebuildRenderData(), UploadToGPU();
+    if (transformDirty)
+        UpdateModelMatrix();
+
+    shader.use();
+    shader.setMat4("model", GetModelMatrix());
+    shader.setVec4("edgeColor", selected ? glm::vec4(0.0f, 1.0f, 1.0f, 1.0f) : glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    shader.setFloat("lineWidth", 2.0f);
+
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.0f, -1.0f);  // Pull edges toward the camera
+    glBindVertexArray(vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eboEdges);
     glDrawElements(GL_LINES, edgeIndices.size(), GL_UNSIGNED_INT, 0);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }

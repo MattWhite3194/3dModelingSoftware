@@ -77,8 +77,9 @@ void DrawToolWindow() {
 	{
 		if (viewport->currentSelectedMesh) {
 			//Mesh transformations tab
-			if (ImGui::BeginTabItem("Mesh")) {
-
+			ImGuiTabItemFlags meshFlags = viewport->forceMeshTab ? ImGuiTabItemFlags_SetSelected : 0;
+			if (ImGui::BeginTabItem("Mesh", nullptr, meshFlags)) {
+				viewport->forceMeshTab = false;
 				bool changed = false;
 				//GLobal transformations
 				ImGui::Text("Translation:");
@@ -119,10 +120,18 @@ void DrawToolWindow() {
 			}
 		}
 		if (ImGui::BeginTabItem("Create")) {
-			ImGui::Button("New Cube");
-			ImGui::Button("New Circle");
-			ImGui::Button("New Cylinder");
-			ImGui::Button("New Cone");
+			if (ImGui::Button("New Cube")) {
+				viewport->AddMesh(CreateCube(1.0f));
+			}
+			if (ImGui::Button("New Cylinder")) {
+				viewport->AddMesh(CreateCylinder(16, 1.0f, 2.0f));
+			}
+			if (ImGui::Button("New Cone")) {
+				viewport->AddMesh(CreateCone(16, 1.0f, 2.0f));
+			}
+			if (ImGui::Button("New Circle")) {
+				viewport->AddMesh(CreateCircle(16, 1.0f));
+			}
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();
@@ -137,7 +146,6 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_SAMPLES, 4);
 
 	//create a new glfw window
 	GLFWwindow* window = glfwCreateWindow(1400, 1000, "Doing a frame swap.", NULL, NULL);
@@ -180,7 +188,6 @@ int main()
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetKeyCallback(window, key_callback);
 
-	glEnable(GL_MULTISAMPLE);
 	SetupImGuiStyle();
 	bool first_time = true;
 	while (!glfwWindowShouldClose(window)) {

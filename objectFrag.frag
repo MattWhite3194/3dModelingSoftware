@@ -8,11 +8,16 @@ in vec3 Normal;
 uniform vec3 lightPos;
 uniform vec4 objectColor;
 uniform bool shadedNormals;
+uniform bool lightingEnabled;
 vec3 lightColor = vec3(1.0, 1.0, 1.0);
 vec3 ambient = vec3(0.3, 0.3, 0.3);
 
 void main()
 {
+    if (!lightingEnabled) {
+        FragColor = objectColor;
+        return;
+    }
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     

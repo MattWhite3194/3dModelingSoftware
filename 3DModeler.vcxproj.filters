@@ -101,10 +101,19 @@
       <Filter>Resource Files\Shaders</Filter>
     </None>
     <None Include="packages.config" />
-    <None Include="viewportFrag.frag">
+    <None Include="edgeVert.vert">
       <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="viewportVert.vert">
+    <None Include="edgeGeom.geom">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="edgeFrag.frag">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="gridVert.vert">
+      <Filter>Resource Files\Shaders</Filter>
+    </None>
+    <None Include="gridFrag.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
   </ItemGroup>

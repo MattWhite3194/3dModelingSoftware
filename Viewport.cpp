@@ -4,38 +4,33 @@
 #include "MeshUtilities.h"
 
 void Viewport::InitGrid() {
-	std::vector<glm::vec3> gridVertices;
-	int half = GRID_SIZE / 2;
-
-	for (int i = -half; i <= half; i++) {
-		//line size of GRID_SIZE parallel to X-axis
-		gridVertices.push_back(glm::vec3(i, -half, 0));
-		gridVertices.push_back(glm::vec3(i, half,0));
-
-		//line size of GRID_SIZE parallel to Z-axis
-		gridVertices.push_back(glm::vec3(-half, i, 0));
-		gridVertices.push_back(glm::vec3(half, i, 0));
-	}
+	float gridPlane[12] = {
+		-1, -1, 0,
+		1,	-1, 0,
+		1,	1, 0, 
+		-1, 1, 0
+	};
 
 	glGenVertexArrays(1, &gridVao);
 	glGenBuffers(1, &gridVbo);
 
 	glBindVertexArray(gridVao);
 	glBindBuffer(GL_ARRAY_BUFFER, gridVbo);
-	glBufferData(GL_ARRAY_BUFFER, gridVertices.size() * sizeof(glm::vec3), gridVertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(float), gridPlane, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
 	glBindVertexArray(0);
 }
 
-void Viewport::InitShaders() {
-	sceneMeshes.push_back(CreateCylinder(12, 1, 5));
+void Viewport::Init() {
+	//Default Cube
+	sceneMeshes.push_back(CreateCube(1.0f));
 	viewportCamera = new Camera();
-	std::cout << glm::to_string(viewportCamera->ZoomPosition) << " " << glm::to_string(viewportCamera->Front) << std::endl;
 	objectShader = new Shader("objectVert.vert", "objectFrag.frag");
-	viewportShader = new Shader("viewportVert.vert", "viewportFrag.frag");
+	edgeShader = new Shader("edgeVert.vert", "edgeFrag.frag", "edgeGeom.geom");
+	gridShader = new Shader("gridVert.vert", "gridFrag.frag");
 }
 
 void Viewport::ResizeViewportFramebuffer(int width, int height) {
@@ -56,7 +51,7 @@ void Viewport::CreateViewportFramebuffer() {
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	// Color texture
+	// Viewport as image texture
 	glGenTextures(1, &fboTexture);
 	glBindTexture(GL_TEXTURE_2D, fboTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, viewportWidth, viewportHeight,
@@ -83,29 +78,39 @@ void Viewport::CreateViewportFramebuffer() {
 void Viewport::Draw() {
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	glViewport(0, 0, viewportWidth, viewportHeight);
-
 	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 
 	glClearColor(0.2f, 0.2f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	viewportShader->use();
-	viewportShader->setMat4("projection", Projection);
-	viewportShader->setMat4("view", viewportCamera->GetViewMatrix());
-	glBindVertexArray(gridVao);
-	glLineWidth(2.0f);
-	glDrawArrays(GL_LINES, 0, (GRID_SIZE + 1) * 4);
-	glBindVertexArray(0);
-
+	//Set transforms on shaders
 	objectShader->use();
 	objectShader->setVec3("lightPos", glm::vec3(glm::vec4(viewportCamera->ZoomPosition, 1.0f) * glm::rotate(glm::mat4(1.0f), glm::radians<float>(45.0f), glm::vec3(0.0f, 1.0f, 0.0f))));
 	objectShader->setMat4("projection", Projection);
 	objectShader->setMat4("view", viewportCamera->GetViewMatrix());
-	
+	edgeShader->use();
+	edgeShader->setMat4("projection", Projection);
+	edgeShader->setMat4("view", viewportCamera->GetViewMatrix());
+	edgeShader->setMat4("model", glm::mat4(1.0f));
+	edgeShader->setVec2("viewportSize", glm::vec2(viewportWidth, viewportHeight));
 
 	for (const auto& mesh : sceneMeshes) {
 		mesh->Draw(*objectShader);
+		mesh->DrawEdges(*edgeShader);
 	}
+
+	gridShader->use();
+	gridShader->setMat4("projection", Projection);
+	gridShader->setMat4("view", viewportCamera->GetViewMatrix());
+	gridShader->setMat4("model", glm::mat4(1.0f));
+	gridShader->setVec4("gridColor", glm::vec4(0.7f));
+	gridShader->setVec3("cameraPos", viewportCamera->Position);
+	glBindVertexArray(gridVao);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -162,7 +167,6 @@ void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action,
 			float dist;
 			Face* face;
 			if (PickMesh(*mesh, origin, rayDir, dist, face)) {
-				std::cout << dist << std::endl;
 				if (dist < closestDistance) {
 					selected = mesh.get();
 					closestDistance = dist;
@@ -170,16 +174,7 @@ void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action,
 				}
 			}
 		}
-		if (currentSelectedMesh) {
-			currentSelectedMesh->selected = false;
-		}
-		if (selected) {
-			selected->selected = true;
-			currentSelectedMesh = selected;
-		}
-		else {
-			currentSelectedMesh = nullptr;
-		}
+		SetSelected(selected);
 	}
 }
 
@@ -189,8 +184,38 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 			viewportCamera->SetFocus(currentSelectedMesh->Translation, 10.0f);
 		}
 	}
+	else if (key == GLFW_KEY_DELETE && action == GLFW_PRESS) {
+		if (currentSelectedMesh) {
+			DeleteMesh(currentSelectedMesh);
+		}
+	}
 }
 
 void Viewport::AddMesh(std::unique_ptr<Mesh> mesh) {
+	Mesh* newSelected = mesh.get();
 	sceneMeshes.push_back(std::move(mesh));
+	SetSelected(newSelected);
+}
+
+void Viewport::DeleteMesh(Mesh* mesh) {
+	auto it = std::find_if(sceneMeshes.begin(), sceneMeshes.end(),
+		[&](const std::unique_ptr<Mesh>& m) {
+			return m.get() == mesh;
+		});
+
+	if (it != sceneMeshes.end()) {
+		sceneMeshes.erase(it);
+	}
+	currentSelectedMesh = nullptr;
+}
+
+void Viewport::SetSelected(Mesh* mesh) {
+	if (currentSelectedMesh) {
+		currentSelectedMesh->selected = false;
+	}
+	currentSelectedMesh = mesh;
+	if (mesh) {
+		mesh->selected = true;
+		forceMeshTab = true;
+	}
 }
