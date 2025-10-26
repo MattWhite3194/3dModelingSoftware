@@ -25,16 +25,16 @@ void MeshToTriangles(const Mesh& mesh,
 
         unsigned int index = 0;
         //Push all vertices to the vertex buffer
-        for (auto v : mesh.vertices) {
+        for (auto& v : mesh.vertices) {
             outPositions.push_back(v->position);
             outNormals.push_back(v->normal);
             //Add all vertices to a dictionary with an increasing key
-            vertexToIndex[v] = index++;
+            vertexToIndex[v.get()] = index++;
         }
         
 
         //Loop through all faces
-        for (auto f : mesh.faces) {
+        for (auto& f : mesh.faces) {
             std::vector<unsigned int> faceIndices;
             const HalfEdge* start = f->edge;
             const HalfEdge* e = start;
@@ -72,7 +72,7 @@ void MeshToTriangles(const Mesh& mesh,
     else
     {
         //Will result in duplicate vertices, which is intended for flat shading since a vertex can only store one normal
-        for (auto f : mesh.faces) {
+        for (auto& f : mesh.faces) {
             const HalfEdge* start = f->edge;
             const HalfEdge* e = start;
 
@@ -136,11 +136,11 @@ Compute the meshes origin, the whole mesh or selected faces, flip all faces once
 void ComputeNormals(Mesh& mesh)
 {
     // Reset all vertex normals
-    for (auto v : mesh.vertices)
+    for (auto& v : mesh.vertices)
         v->normal = glm::vec3(0.0f);
 
     // Compute face normals and accumulate into vertex normals
-    for (auto f : mesh.faces)
+    for (auto& f : mesh.faces)
     {
         HalfEdge* e0 = f->edge;
         if (!e0 || !e0->next || !e0->next->next)
@@ -161,7 +161,7 @@ void ComputeNormals(Mesh& mesh)
     }
 
     // Normalize accumulated vertex normals
-    for (auto v : mesh.vertices)
+    for (auto& v : mesh.vertices)
         v->normal = glm::normalize(v->normal);
 }
 
@@ -220,7 +220,7 @@ bool PickMesh(Mesh& mesh, glm::vec3 rayOrigin, glm::vec3 rayDir, float& outDist,
     outFace = nullptr;
     outDist = FLT_MAX;
 
-    for (auto f : mesh.faces)
+    for (auto& f : mesh.faces)
     {
         // Fan triangulate through all edges
         const HalfEdge* start = f->edge;
@@ -240,7 +240,7 @@ bool PickMesh(Mesh& mesh, glm::vec3 rayOrigin, glm::vec3 rayDir, float& outDist,
                 glm::vec3 hitWorld = glm::vec3(model * glm::vec4(hitLocal, 1.0f));
                 float tWorld = glm::length(hitWorld - rayOrigin);
                 outDist = tWorld;
-                outFace = f;
+                outFace = f.get();
             }
 
             // Move forward in fan

@@ -3,29 +3,31 @@
 #include "Vertex.h"
 #include "HalfEdge.h"
 #include "Face.h"
+#include "unordered_map"
 
 Vertex* Mesh::addVertex(const glm::vec3& pos) {
-    Vertex* v = new Vertex();
+    vertices.push_back(std::make_unique<Vertex>());
+    Vertex* v = vertices.back().get();
     v->position = pos;
-    vertices.push_back(v);
     return v;
 }
 
 Face* Mesh::addFace(const std::vector<Vertex*>& verts) {
     if (verts.size() < 3) return nullptr;
 
-    Face* face = new Face();
-    faces.push_back(face);
+    faces.push_back(std::make_unique<Face>());
+    Face* face = faces.back().get();
 
     std::vector<HalfEdge*> edges;
     edges.reserve(verts.size());
 
     // Create one edge per vertex
     for (size_t i = 0; i < verts.size(); ++i) {
-        HalfEdge* e = new HalfEdge();
+        halfEdges.push_back(std::make_unique<HalfEdge>());
+        HalfEdge* e = halfEdges.back().get();
+
         e->origin = verts[i];
         e->face = face;
-        halfEdges.push_back(e);
         edges.push_back(e);
 
         if (!verts[i]->outgoing)
@@ -39,27 +41,23 @@ Face* Mesh::addFace(const std::vector<Vertex*>& verts) {
 
     face->edge = edges[0];
 
-    // Build twin links (simple lookup by edge pair)
-    static std::unordered_map<uint64_t, HalfEdge*> edgeMap;
-
-    auto key = [](Vertex* a, Vertex* b) -> uint64_t {
-        return (reinterpret_cast<uint64_t>(a) << 32) ^
-            reinterpret_cast<uint64_t>(b);
-        };
-
+    // Twin linking (works the same as before)
     for (auto* e : edges) {
-        uint64_t k = key(e->next->origin, e->origin); // reversed direction
-        if (edgeMap.count(k)) {
-            e->twin = edgeMap[k];
+        auto key = std::make_pair(e->next->origin, e->origin);
+        auto reverseKey = std::make_pair(e->origin, e->next->origin);
+
+        if (edgeMap.count(reverseKey)) {
+            e->twin = edgeMap[reverseKey];
             e->twin->twin = e;
         }
         else {
-            edgeMap[key(e->origin, e->next->origin)] = e;
+            edgeMap[key] = e;
         }
     }
 
     return face;
 }
+
 void Mesh::RebuildRenderData() {
     renderPositions.clear();
     renderIndices.clear();

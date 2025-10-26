@@ -21,7 +21,7 @@ public:
 	Camera* viewportCamera;
 	Mesh* currentSelectedMesh;
 	Face* currentSelectedFace;
-	std::vector<Mesh> sceneMeshes;
+	std::vector<std::unique_ptr<Mesh>> sceneMeshes;
 	int viewportWidth = 1000, viewportHeight = 1000;
 	glm::mat4 Projection;
 	glm::vec3 viewportLight = glm::vec3(1.2f, 1.0f, 10.0f);
@@ -42,6 +42,7 @@ public:
 	void scroll_callback(GLFWwindow* window, double xpos, double ypos);
 	void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 	void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	void AddMesh(std::unique_ptr<Mesh> mesh);
 };
 
 #endif

@@ -8,20 +8,28 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include "Vertex.h"
+#include "HalfEdge.h"
+#include "Face.h"
 
-struct Vertex;
-struct HalfEdge;
-struct Face;
+/// <summary>
+/// Used for hashing a pair of vertices when inserting a half edge into a lookup table
+/// </summary>
+struct PairHash {
+    size_t operator()(const std::pair<Vertex*, Vertex*>& p) const noexcept {
+        return std::hash<Vertex*>()(p.first) ^ (std::hash<Vertex*>()(p.second) << 1);
+    }
+};
 
 class Mesh {
 public:
     //TODO: Object only has one stored vec3 per transformation
     //transformations along axis are affected by objects rotation, only affects the single model matrix.
     //Mesh Data
-    std::vector<Vertex*> vertices;
-    std::vector<HalfEdge*> halfEdges;
-    std::vector<Face*> faces;
-    char* name;
+    std::vector<std::unique_ptr<Vertex>> vertices;
+    std::vector<std::unique_ptr<HalfEdge>> halfEdges;
+    std::vector<std::unique_ptr<Face>> faces;
+    std::string name;
 
     //Transformations
     glm::vec3 Scale = glm::vec3(1.0f);
@@ -36,6 +44,10 @@ public:
     std::vector<unsigned int> renderIndices;
     std::vector<glm::vec3> renderNormals;
     std::vector<unsigned int> edgeIndices;
+    /// <summary>
+    /// Used to store an edge as a pair of vertices for quick lookup when finding the adjacent halfedge (twin)
+    /// </summary>
+    std::unordered_map<std::pair<Vertex*, Vertex*>, HalfEdge*, PairHash> edgeMap;
     glm::vec4 ObjectColor = glm::vec4(0.6f, 0.6f, 0.6f, 1.0f);
     bool flatShading = true;
     bool selected = false;

@@ -103,8 +103,8 @@ void Viewport::Draw() {
 	objectShader->setMat4("view", viewportCamera->GetViewMatrix());
 	
 
-	for (std::vector<Mesh>::iterator Mesh = sceneMeshes.begin(); Mesh != sceneMeshes.end(); ++Mesh) {
-		Mesh->Draw(*objectShader);
+	for (const auto& mesh : sceneMeshes) {
+		mesh->Draw(*objectShader);
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -158,13 +158,13 @@ void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action,
 		Face* selectedFace = nullptr;
 		float closestDistance = FLT_MAX;
 		//Iterate through all the meshes and select the mesh that was intersected closest to the camera
-		for (std::vector<Mesh>::iterator Mesh = sceneMeshes.begin(); Mesh != sceneMeshes.end(); ++Mesh) {
+		for (const auto& mesh : sceneMeshes) {
 			float dist;
 			Face* face;
-			if (PickMesh(*Mesh, origin, rayDir, dist, face)) {
+			if (PickMesh(*mesh, origin, rayDir, dist, face)) {
 				std::cout << dist << std::endl;
 				if (dist < closestDistance) {
-					selected = &*Mesh;
+					selected = mesh.get();
 					closestDistance = dist;
 					selectedFace = face;
 				}
@@ -189,4 +189,8 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 			viewportCamera->SetFocus(currentSelectedMesh->Translation, 10.0f);
 		}
 	}
+}
+
+void Viewport::AddMesh(std::unique_ptr<Mesh> mesh) {
+	sceneMeshes.push_back(std::move(mesh));
 }

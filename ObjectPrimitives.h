@@ -1,10 +1,10 @@
 #pragma once
 #include "Mesh.h"
 
-Mesh CreateCube(float size);
+std::unique_ptr<Mesh> CreateCube(float size);
 
-Mesh CreateCylinder(int resolution, float radius, float height);
+std::unique_ptr<Mesh> CreateCylinder(int resolution, float radius, float height);
 
-Mesh CreateCone(int resolution, float radius, float height);
+std::unique_ptr<Mesh> CreateCone(int resolution, float radius, float height);
 
-Mesh CreateCircle(int resolution, float radius);
+std::unique_ptr<Mesh> CreateCircle(int resolution, float radius);

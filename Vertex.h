@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+struct HalfEdge;
 
 struct Vertex {
     glm::vec3 position;
