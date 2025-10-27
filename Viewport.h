@@ -13,13 +13,23 @@
 #include "Camera.h"
 #include <GLFW/glfw3.h>
 
+enum TransformTool {
+	None = 0,
+	Rotate = 1,
+	Translate = 2,
+	Scale = 3
+};
 class Viewport {
 public:
 	GLuint fbo = 0, fboTexture = 0, fboDepth = 0, gridVao = 0, gridVbo = 0;
 	Shader* objectShader, * edgeShader, * gridShader;
 	Camera* viewportCamera;
-	Mesh* currentSelectedMesh;
-	Face* currentSelectedFace;
+	Mesh* selectedMesh;
+	/// <summary>
+	/// For use when applying transforms with the mouse. Need to save the meshes original transform so it can be undone.
+	/// </summary>
+	glm::vec3 selectedTransform = glm::vec3(1.0f);
+	std::unordered_map<int, TransformTool> transformKeyMappings;
 	std::vector<std::unique_ptr<Mesh>> sceneMeshes;
 	int viewportWidth = 1000, viewportHeight = 1000;
 	glm::mat4 Projection;
@@ -29,6 +39,7 @@ public:
 	bool firstMouse = true;
 	bool IsActive = false;
 	bool forceMeshTab = false;
+	TransformTool ActiveTool = None;
 	Viewport() {
 		InitGrid();
 		Init();
@@ -45,6 +56,16 @@ public:
 	void AddMesh(std::unique_ptr<Mesh> mesh);
 	void DeleteMesh(Mesh* mesh);
 	void SetSelected(Mesh* mesh);
+	void SetActiveTool(TransformTool activeTool, bool undoCurrent = true);
+	void UndoTransform();
+	glm::vec3 ScreenDeltaToWorldDelta(
+		float mouseX, float mouseY,
+		float dx, float dy,
+		const glm::mat4& view,
+		const glm::mat4& proj,
+		const glm::vec4& viewport,
+		const glm::vec3& objectPosWorld
+	);
 };
 
 #endif

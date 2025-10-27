@@ -75,7 +75,7 @@ void DrawToolWindow() {
 
 	if (ImGui::BeginTabBar("Mesh Tools"))
 	{
-		if (viewport->currentSelectedMesh) {
+		if (viewport->selectedMesh) {
 			//Mesh transformations tab
 			ImGuiTabItemFlags meshFlags = viewport->forceMeshTab ? ImGuiTabItemFlags_SetSelected : 0;
 			if (ImGui::BeginTabItem("Mesh", nullptr, meshFlags)) {
@@ -84,30 +84,30 @@ void DrawToolWindow() {
 				//GLobal transformations
 				ImGui::Text("Translation:");
 				ImGui::PushItemWidth(-1);
-				changed |= ImGui::DragFloat("##01", &viewport->currentSelectedMesh->Translation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
-				changed |= ImGui::DragFloat("##02", &viewport->currentSelectedMesh->Translation.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
-				changed |= ImGui::DragFloat("##03", &viewport->currentSelectedMesh->Translation.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				changed |= ImGui::DragFloat("##01", &viewport->selectedMesh->Translation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
+				changed |= ImGui::DragFloat("##02", &viewport->selectedMesh->Translation.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##03", &viewport->selectedMesh->Translation.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
 				ImGui::PopItemWidth();
 				ImGui::Text("Rotation:");
 				ImGui::PushItemWidth(-1);
-				changed |= ImGui::DragFloat("##04", &viewport->currentSelectedMesh->Rotation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
-				changed |= ImGui::DragFloat("##05", &viewport->currentSelectedMesh->Rotation.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
-				changed |= ImGui::DragFloat("##06", &viewport->currentSelectedMesh->Rotation.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				changed |= ImGui::DragFloat("##04", &viewport->selectedMesh->Rotation.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
+				changed |= ImGui::DragFloat("##05", &viewport->selectedMesh->Rotation.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##06", &viewport->selectedMesh->Rotation.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
 				ImGui::PopItemWidth();
 				ImGui::Text("Scale:");
 				ImGui::PushItemWidth(-1);
-				changed |= ImGui::DragFloat("##07", &viewport->currentSelectedMesh->Scale.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
-				changed |= ImGui::DragFloat("##08", &viewport->currentSelectedMesh->Scale.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
-				changed |= ImGui::DragFloat("##09", &viewport->currentSelectedMesh->Scale.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
+				changed |= ImGui::DragFloat("##07", &viewport->selectedMesh->Scale.x, 0.1f, 0.0f, 0.0f, "X:\t%.4f");
+				changed |= ImGui::DragFloat("##08", &viewport->selectedMesh->Scale.y, 0.1f, 0.0f, 0.0f, "Y:\t%.4f");
+				changed |= ImGui::DragFloat("##09", &viewport->selectedMesh->Scale.z, 0.1f, 0.0f, 0.0f, "Z:\t%.4f");
 				ImGui::PopItemWidth();
 				if (changed) {
-					viewport->currentSelectedMesh->transformDirty = true;
+					viewport->selectedMesh->transformDirty = true;
 				}
 
-				if (ImGui::Checkbox("Flat Shading", &viewport->currentSelectedMesh->flatShading)) {
-					viewport->currentSelectedMesh->gpuDirty = !viewport->currentSelectedMesh->gpuDirty;
+				if (ImGui::Checkbox("Flat Shading", &viewport->selectedMesh->flatShading)) {
+					viewport->selectedMesh->gpuDirty = !viewport->selectedMesh->gpuDirty;
 				}
-				ImGui::ColorEdit4("Object Color", glm::value_ptr(viewport->currentSelectedMesh->ObjectColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_DisplayHex);
+				ImGui::ColorEdit4("Object Color", glm::value_ptr(viewport->selectedMesh->ObjectColor), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_DisplayHex);
 				ImGui::EndTabItem();
 			}
 			//mesh modifiers tab

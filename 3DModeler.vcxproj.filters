@@ -116,5 +116,6 @@
     <None Include="gridFrag.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
+    <None Include="README.md" />
   </ItemGroup>
 </Project>
