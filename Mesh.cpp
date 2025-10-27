@@ -1,9 +1,165 @@
 #include "Mesh.h"
-#include "MeshUtilities.h"
 #include "Vertex.h"
 #include "HalfEdge.h"
 #include "Face.h"
 #include "unordered_map"
+#include "unordered_set"
+
+
+void Mesh::MeshToTriangles(const Mesh& mesh,
+    std::vector<glm::vec3>& outPositions,
+    std::vector<glm::vec3>& outNormals,
+    std::vector<unsigned int>& outIndices,
+    std::vector<unsigned int>& outEdgeIndices
+)
+{
+    outPositions.clear();
+    outNormals.clear();
+    outIndices.clear();
+    outEdgeIndices.clear();
+    //Unique edge set to avoid duplicates
+    std::unordered_set<uint64_t> edgeSet;
+
+    if (!mesh.flatShading)
+    {
+        std::unordered_map<const Vertex*, unsigned int> vertexToIndex;
+
+        unsigned int index = 0;
+        //Push all vertices to the vertex buffer
+        for (auto& v : mesh.vertices) {
+            outPositions.push_back(v->position);
+            outNormals.push_back(v->normal);
+            //Add all vertices to a dictionary with an increasing key
+            vertexToIndex[v.get()] = index++;
+        }
+
+
+        //Loop through all faces
+        for (auto& f : mesh.faces) {
+            std::vector<unsigned int> faceIndices;
+            const HalfEdge* start = f->edge;
+            const HalfEdge* e = start;
+
+            //Loop through each half edge on the face
+            do {
+                faceIndices.push_back(vertexToIndex.at(e->origin));
+                //calculate edge pairs
+                unsigned int i0 = vertexToIndex.at(e->origin);
+                unsigned int i1 = vertexToIndex.at(e->next->origin);
+
+                // Sort to avoid duplicate reversed edge pairs
+                unsigned int a = std::min(i0, i1);
+                unsigned int b = std::max(i0, i1);
+
+                // Unique edge hash
+                uint64_t key = (uint64_t)a << 32 | b;
+
+                if (edgeSet.insert(key).second) {
+                    outEdgeIndices.push_back(a);
+                    outEdgeIndices.push_back(b);
+                }
+
+                e = e->next;
+            } while (e != start);
+
+            //Triangulate the polygon with fanning
+            for (size_t i = 1; i + 1 < faceIndices.size(); ++i) {
+                outIndices.push_back(faceIndices[0]);
+                outIndices.push_back(faceIndices[i]);
+                outIndices.push_back(faceIndices[i + 1]);
+            }
+        }
+    }
+    else
+    {
+        //Will result in duplicate vertices, which is intended for flat shading since a vertex can only store one normal
+        for (auto& f : mesh.faces) {
+            const HalfEdge* start = f->edge;
+            const HalfEdge* e = start;
+
+            std::vector<glm::vec3> faceVerts;
+            //Push back all connected vertices into vertex buffer for each face
+            do {
+                faceVerts.push_back(e->origin->position);
+
+                e = e->next;
+            } while (e != start);
+
+            // Compute face normal once
+            if (faceVerts.size() >= 3) {
+                glm::vec3 n = glm::normalize(glm::cross(faceVerts[1] - faceVerts[0],
+                    faceVerts[2] - faceVerts[0]));
+
+                // Fan triangulate with duplicated vertices
+                for (size_t i = 1; i + 1 < faceVerts.size(); ++i) {
+                    glm::vec3 p0 = faceVerts[0];
+                    glm::vec3 p1 = faceVerts[i];
+                    glm::vec3 p2 = faceVerts[i + 1];
+
+
+                    unsigned int startIndex = outPositions.size();
+
+                    outPositions.push_back(p0);
+                    outPositions.push_back(p1);
+                    outPositions.push_back(p2);
+
+                    outNormals.push_back(n);
+                    outNormals.push_back(n);
+                    outNormals.push_back(n);
+
+                    outIndices.push_back(startIndex);
+                    outIndices.push_back(startIndex + 1);
+                    outIndices.push_back(startIndex + 2);
+
+                    //Get edge indices
+                    //TODO: use a hash map of vertex positions to prevent duplicates
+                    outEdgeIndices.push_back(startIndex + 1);
+                    outEdgeIndices.push_back(startIndex + 2);
+                    if (i == faceVerts.size() - 2) {
+                        outEdgeIndices.push_back(startIndex);
+                        outEdgeIndices.push_back(startIndex + 2);
+                    }
+                    if (i == 1) {
+                        outEdgeIndices.push_back(startIndex);
+                        outEdgeIndices.push_back(startIndex + 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Mesh::ComputeNormals(Mesh& mesh)
+{
+    // Reset all vertex normals
+    for (auto& v : mesh.vertices)
+        v->normal = glm::vec3(0.0f);
+
+    // Compute face normals and accumulate into vertex normals
+    for (auto& f : mesh.faces)
+    {
+        HalfEdge* e0 = f->edge;
+        if (!e0 || !e0->next || !e0->next->next)
+            continue;
+
+        glm::vec3 p0 = e0->origin->position;
+        glm::vec3 p1 = e0->next->origin->position;
+        glm::vec3 p2 = e0->next->next->origin->position;
+
+        glm::vec3 normal = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+
+        // Assign to all vertices in this face
+        HalfEdge* e = e0;
+        do {
+            e->origin->normal += normal;
+            e = e->next;
+        } while (e != e0);
+    }
+
+    // Normalize accumulated vertex normals
+    for (auto& v : mesh.vertices)
+        v->normal = glm::normalize(v->normal);
+}
 
 Vertex* Mesh::addVertex(const glm::vec3& pos) {
     vertices.push_back(std::make_unique<Vertex>());

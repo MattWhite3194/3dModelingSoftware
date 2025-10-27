@@ -16,15 +16,10 @@
 #include "imgui_internal.h"
 
 //Local includes
-#include "shader_s.h"
-#include "Camera.h"
-#include "Mesh.h"
 #include "ObjectPrimitives.h"
-#include "MeshUtilities.h"
 #include "Viewport.h"
 
 Viewport* viewport;
-ImVec2 viewportCursorPos = ImVec2(0, 0);
 ImGuiWindowFlags host_flags =
 ImGuiWindowFlags_NoTitleBar |
 ImGuiWindowFlags_NoCollapse |
@@ -42,7 +37,7 @@ void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 	if (ImGui::GetIO().WantCaptureMouse && !viewport->IsActive) {
 		return;
 	}
-	viewport->cursor_pos_callback(window, viewportCursorPos.x, viewportCursorPos.y);
+	viewport->cursor_pos_callback(window, xpos, ypos);
 }
 
 void scroll_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -167,14 +162,15 @@ int main()
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	//io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
+	//Load ImGui font
+	io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 8.0f);
+	io.FontDefault = io.Fonts->Fonts.back();
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
 	ImGui_ImplOpenGL3_Init("#version 130");
-
-	//Load ImGui font
-	ImGui::GetIO().Fonts->AddFontFromFileTTF("C:/Windows/Fonts/Arial.ttf", 8.0f);
-	io.FontDefault = io.Fonts->Fonts.back();
 
 	//process loop
 	glfwMakeContextCurrent(window);
@@ -235,18 +231,17 @@ int main()
 		ImGui::End();
 
 		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-		ImVec2 mousePos = ImGui::GetMousePos();
-		ImVec2 winPos = ImGui::GetWindowPos();
-		ImVec2 curPos = ImGui::GetCursorPos(); 
-		viewportCursorPos = ImVec2(
-			mousePos.x - winPos.x - curPos.x,
-			mousePos.y - winPos.y - curPos.y
-		);
 		bool isViewportHovered = ImGui::IsWindowHovered();
-		bool isViewportFocused = ImGui::IsWindowFocused();
-		viewport->IsActive = isViewportHovered;
+		viewport->IsActive = isViewportHovered || viewport->ActiveTool;
 		ImVec2 size = ImGui::GetContentRegionAvail();
 		viewport->ResizeViewportFramebuffer(size.x, size.y);
+		ImVec2 mousePos = ImGui::GetMousePos(); 
+		ImVec2 winPos = ImGui::GetWindowPos(); 
+		ImVec2 curPos = ImGui::GetCursorPos(); 
+		viewport->localCursorPos = glm::vec2(
+			mousePos.x - winPos.x - curPos.x, 
+			mousePos.y - winPos.y - curPos.y
+		);
 		viewport->Draw();
 		ImGui::Image((ImTextureID)(intptr_t)viewport->fboTexture, size,
 			ImVec2(0, 1), ImVec2(1, 0)); // Flip vertically

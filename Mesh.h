@@ -55,24 +55,27 @@ public:
     glm::mat4 GetModelMatrix() {
         return Model;
     }
+
+    static void MeshToTriangles(const Mesh& mesh,
+        std::vector<glm::vec3>& outPositions,
+        std::vector<glm::vec3>& outNormals,
+        std::vector<unsigned int>& outIndices,
+        std::vector<unsigned int>& outEdgeIndices);
+
+    static void ComputeNormals(Mesh& mesh);
+
     Vertex* addVertex(const glm::vec3& pos);
+
     Face* addFace(const std::vector<Vertex*>& verts);
+
     void RebuildRenderData();
+
     void UploadToGPU();
+
     void Draw(Shader& shader);
+
     void DrawEdges(Shader& shader);
-    void ScaleBy(glm::vec3 factor) {
-        Scale *= factor;
-        UpdateModelMatrix();
-    }
-    void Rotate(glm::vec3 rotation) {
-        Rotation += rotation;
-        UpdateModelMatrix();
-    }
-    void Translate(glm::vec3 translation) {
-        Translation += translation;
-        UpdateModelMatrix();
-    }
+
 private:
     //Transformations
     glm::mat4 Model = glm::mat4(1.0f);

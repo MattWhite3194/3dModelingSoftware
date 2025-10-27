@@ -29,9 +29,11 @@ public:
 	/// For use when applying transforms with the mouse. Need to save the meshes original transform so it can be undone.
 	/// </summary>
 	glm::vec3 selectedTransform = glm::vec3(1.0f);
+	float scaleStartDistance = 0.0f;
 	std::unordered_map<int, TransformTool> transformKeyMappings;
 	std::vector<std::unique_ptr<Mesh>> sceneMeshes;
 	int viewportWidth = 1000, viewportHeight = 1000;
+	glm::vec2 localCursorPos;
 	glm::mat4 Projection;
 	glm::vec3 viewportLight = glm::vec3(1.2f, 1.0f, 10.0f);
 	const int GRID_SIZE = 20;
@@ -40,24 +42,41 @@ public:
 	bool IsActive = false;
 	bool forceMeshTab = false;
 	TransformTool ActiveTool = None;
+
 	Viewport() {
 		InitGrid();
 		Init();
 	}
+
 	void InitGrid();
+
 	void Init();
+
 	void CreateViewportFramebuffer();
+
+
 	void ResizeViewportFramebuffer(int width, int height);
+
 	void Draw();
+
 	void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
+
 	void scroll_callback(GLFWwindow* window, double xpos, double ypos);
+
 	void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+
 	void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
 	void AddMesh(std::unique_ptr<Mesh> mesh);
+
 	void DeleteMesh(Mesh* mesh);
+
 	void SetSelected(Mesh* mesh);
-	void SetActiveTool(TransformTool activeTool, bool undoCurrent = true);
+
+	void SetActiveTool(GLFWwindow* window, TransformTool activeTool, bool undoCurrent = true);
+
 	void UndoTransform();
+
 	glm::vec3 ScreenDeltaToWorldDelta(
 		float mouseX, float mouseY,
 		float dx, float dy,
@@ -65,6 +84,18 @@ public:
 		const glm::mat4& proj,
 		const glm::vec4& viewport,
 		const glm::vec3& objectPosWorld
+	);
+
+	bool PickMesh(Mesh& mesh,
+		glm::vec3 rayOrigin,
+		glm::vec3 rayDir,
+		float& outDist,
+		Face*& outFace
+	);
+
+	bool RayTriangle(const glm::vec3& orig, const glm::vec3& dir,
+		const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
+		float& tOut
 	);
 };
 

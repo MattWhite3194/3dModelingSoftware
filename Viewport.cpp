@@ -1,7 +1,7 @@
-#include "Viewport.h"
+﻿#include "Viewport.h"
 #include "ObjectPrimitives.h"
 #include <glm/gtx/string_cast.hpp>
-#include "MeshUtilities.h"
+#include "imgui.h"
 
 void Viewport::InitGrid() {
 	float gridPlane[12] = {
@@ -118,6 +118,7 @@ void Viewport::Draw() {
 
 void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
+	//TODO: fix bug where scale or transform will suddenly jump to mouse pos. Not sure what causes it yet.
 	if (firstMouse)
 	{
 		lastX = xpos;
@@ -131,20 +132,45 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 	lastY = ypos;
 	
 	if (ActiveTool != None) {
+		//TODO: wrap mouse cursor and draw it
+		//
+		//
+		glm::vec4 vp(0.0f, 0.0f, (float)viewportWidth, (float)viewportHeight);
+		glm::vec3 delta = ScreenDeltaToWorldDelta(xpos, ypos, xoffset, -yoffset,
+			viewportCamera->GetViewMatrix(),
+			Projection,
+			vp,
+			selectedMesh->Translation);
 		switch (ActiveTool) {
 		case Translate:
-			glm::vec4 vp(0.0f, 0.0f, (float)viewportWidth, (float)viewportHeight);
-			glm::vec3 delta = ScreenDeltaToWorldDelta(xpos, ypos, xoffset, -yoffset,
-				viewportCamera->GetViewMatrix(),
-				Projection,
-				vp,
-				selectedMesh->Translation);
 			selectedMesh->Translation += delta;
 			break;
-		case Scale:
-			selectedMesh->Scale += delta;
-			break;
+		case Scale: {
+			glm::vec3 projected = glm::project(
+				selectedMesh->Translation,
+				viewportCamera->GetViewMatrix(),
+				Projection,
+				glm::vec4(0, 0, viewportWidth, viewportHeight)
+			);
+			float screenY = viewportHeight - projected.y;
+			glm::vec2 objectScreenPos(projected.x, screenY);
 
+			// Compute current distance from mouse to object center
+			glm::vec2 currentMouse(xpos, ypos);
+			float currentDistance = glm::length(currentMouse - objectScreenPos);
+
+			// Prevent divide-by-zero
+			if (scaleStartDistance > 1e-5f) {
+				// Ratio determines scale
+				float scaleFactor = currentDistance / scaleStartDistance;
+
+				// Apply relative to starting scale
+				selectedMesh->Scale = selectedTransform * scaleFactor;
+			}
+
+			selectedMesh->transformDirty = true;
+			break;
+			}
 		case Rotate:
 			//TODO: get 2D vector of mouse position relative to center of object, calculate angle of change between intial mouse vector and moved mouse relative to center of object
 			break;
@@ -170,21 +196,13 @@ void Viewport::scroll_callback(GLFWwindow* window, double xpos, double ypos) {
 void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
 	if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
 		if (selectedMesh && ActiveTool) {
-			SetActiveTool(None, false);
+			SetActiveTool(window, None, false);
 			return;
 		}
-		float x = (2.0f * lastX) / viewportWidth - 1.0f;
-		float y = 1.0f - (2.0f * lastY) / viewportHeight;
 
-		glm::vec4 rayClip(x, y, -1.0f, 1.0f);
-
-		glm::vec4 rayEye = glm::inverse(Projection) * rayClip;
-		rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
-
-		glm::vec3 rayDir = glm::normalize(
-			glm::vec3(glm::inverse(viewportCamera->GetViewMatrix()) * rayEye)
-		);
-		glm::vec3 origin = viewportCamera->ZoomPosition;
+		glm::vec3 rayDir;
+		glm::vec3 origin;
+		viewportCamera->GetMouseRay(localCursorPos.x, localCursorPos.y, viewportWidth, viewportHeight, Projection, rayDir, origin);
 
 		Mesh* selected = nullptr;
 		Face* selectedFace = nullptr;
@@ -205,7 +223,7 @@ void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action,
 	}
 	else if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_PRESS) {
 		if (selectedMesh && ActiveTool) {
-			SetActiveTool(None, true);
+			SetActiveTool(window, None, true);
 			return;
 		}
 	}
@@ -217,7 +235,7 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 	if (!selectedMesh || action != GLFW_PRESS)
 		return;
 	if (transformKeyMappings.count(key)) {
-		SetActiveTool(transformKeyMappings[key]);
+		SetActiveTool(window, transformKeyMappings[key]);
 	}
 	switch (key) {
 	case GLFW_KEY_F:
@@ -227,7 +245,7 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 		DeleteMesh(selectedMesh);
 		break;
 	case GLFW_KEY_ENTER:
-		SetActiveTool(None, false);
+		SetActiveTool(window, None, false);
 		break;
 	}
 }
@@ -275,19 +293,35 @@ void Viewport::UndoTransform() {
 	} 
 }
 
-void Viewport::SetActiveTool(TransformTool activeTool, bool undoCurrent) {
+void Viewport::SetActiveTool(GLFWwindow* window, TransformTool activeTool, bool undoCurrent) {
 	if (ActiveTool != None && undoCurrent) {
 		UndoTransform();
 	}
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	firstMouse = true;
 	switch (activeTool) {
 	case Rotate:
 		selectedTransform = selectedMesh->Rotation;
 		break;
 	case Translate:
+		//TODO: set mouse cursor with glfw, imgui resets it every frame
+		//ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
 		selectedTransform = selectedMesh->Translation;
 		break;
 	case Scale:
+		//get initial mouse pos, and initial 
+		glm::vec3 projected = glm::project(
+			selectedMesh->Translation,
+			viewportCamera->GetViewMatrix(),
+			Projection,
+			glm::vec4(0, 0, viewportWidth, viewportHeight)
+		);
+		glm::vec2 objectScreenPos(projected.x, projected.y);
+		scaleStartDistance = glm::length(glm::vec2(lastX, lastY) - objectScreenPos);
 		selectedTransform = selectedMesh->Scale;
+		break;
+	case None:
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		break;
 	}
 	ActiveTool = activeTool;
@@ -313,4 +347,70 @@ glm::vec3 Viewport::ScreenDeltaToWorldDelta(
 	glm::vec3 world2 = glm::unProject(winPos2, view, proj, viewport);
 
 	return world2 - world1;
+}
+
+bool Viewport::PickMesh(Mesh& mesh, glm::vec3 rayOrigin, glm::vec3 rayDir, float& outDist, Face*& outFace) {
+	glm::mat4 model = mesh.GetModelMatrix();
+	glm::mat4 invModel = glm::inverse(model);
+
+	// Transform ray origin and direction into mesh-local space
+	glm::vec3 localOrig = glm::vec3(invModel * glm::vec4(rayOrigin, 1.0f));
+	glm::vec3 localDir = glm::normalize(glm::vec3(invModel * glm::vec4(rayDir, 0.0f)));
+
+	outFace = nullptr;
+	outDist = FLT_MAX;
+
+	for (auto& f : mesh.faces)
+	{
+		// Fan triangulate through all edges
+		const HalfEdge* start = f->edge;
+		const HalfEdge* e = start;
+		const HalfEdge* e1 = e->next;
+		const HalfEdge* e2 = e1->next;
+
+		while (e2 != start) {
+			// Test triangle (e, e1, e2)
+			glm::vec3 v0 = e->origin->position;
+			glm::vec3 v1 = e1->origin->position;
+			glm::vec3 v2 = e2->origin->position;
+
+			float t;
+			if (RayTriangle(localOrig, localDir, v0, v1, v2, t) && t < outDist) {
+				glm::vec3 hitLocal = localOrig + localDir * t;
+				glm::vec3 hitWorld = glm::vec3(model * glm::vec4(hitLocal, 1.0f));
+				float tWorld = glm::length(hitWorld - rayOrigin);
+				outDist = tWorld;
+				outFace = f.get();
+			}
+			// Move forward in fan
+			e1 = e2;
+			e2 = e2->next;
+		}
+	}
+	return (outFace != nullptr);
+}
+
+bool Viewport::RayTriangle(const glm::vec3& orig, const glm::vec3& dir,
+		const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
+		float& tOut)
+{
+	const float EPSILON = 0.000001f;
+	glm::vec3 edge1 = v1 - v0;
+	glm::vec3 edge2 = v2 - v0;
+
+	glm::vec3 pvec = glm::cross(dir, edge2);
+	float det = glm::dot(edge1, pvec);
+	if (fabs(det) < EPSILON) return false;
+
+	float invDet = 1.0f / det;
+	glm::vec3 tvec = orig - v0;
+	float u = glm::dot(tvec, pvec) * invDet;
+	if (u < 0 || u > 1) return false;
+
+	glm::vec3 qvec = glm::cross(tvec, edge1);
+	float v = glm::dot(dir, qvec) * invDet;
+	if (v < 0 || u + v > 1) return false;
+
+	tOut = glm::dot(edge2, qvec) * invDet;
+	return (tOut > EPSILON);
 }
