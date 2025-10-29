@@ -1,5 +1,4 @@
-#ifndef VIEWPORT_CLASS_H
-#define VIEWPORT_CLASS_H
+#pragma once
 
 #include <glad/glad.h>
 #include <glad/glad.h>
@@ -36,11 +35,17 @@ public:
 	glm::vec2 localCursorPos;
 	glm::mat4 Projection;
 	glm::vec3 viewportLight = glm::vec3(1.2f, 1.0f, 10.0f);
+	glm::vec2 rotationStartPos;
+	glm::vec3 transformAxis = glm::vec3(0.0f);
 	const int GRID_SIZE = 20;
 	double lastX, lastY;
 	bool firstMouse = true;
 	bool IsActive = false;
 	bool forceMeshTab = false;
+	bool firstScaleUpdate = false;
+	bool firstRotationUpdate = false;
+	bool transformAxisLocked = false;
+	float accumulatedRotation = 0.0;
 	TransformTool ActiveTool = None;
 
 	Viewport() {
@@ -98,5 +103,3 @@ public:
 		float& tOut
 	);
 };
-
-#endif

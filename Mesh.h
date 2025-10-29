@@ -1,5 +1,5 @@
-#ifndef MESH_H
-#define MESH_H
+#pragma once
+
 #include <glad/glad.h>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -93,4 +93,3 @@ private:
         Model = model;
     }
 };
-#endif

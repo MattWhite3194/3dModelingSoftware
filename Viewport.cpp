@@ -1,8 +1,18 @@
 ﻿#include "Viewport.h"
 #include "ObjectPrimitives.h"
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include "imgui.h"
 
+//TODO: transform axis, X, Y, Z
+//TODO: When ActiveTool is not None, make viewport steal all ImGui mouse input so other tabs aren't affected by mouse position
+//TODO: scale is still broken depending on camera orientation
+//TODO: rotation is god awful
+//TODO: fix axis rotation relative to camera orientation
+
+//TODO: the preceding todos
+//TODO: the above todo
+//TODO: stop writing todo
 void Viewport::InitGrid() {
 	float gridPlane[12] = {
 		-1, -1, 0,
@@ -77,6 +87,51 @@ void Viewport::CreateViewportFramebuffer() {
 }
 
 void Viewport::Draw() {
+	//Draw custom cursor if their is an active tool, doing it here so it draws every frame
+	bool isViewportHovered = ImGui::IsWindowHovered();
+	IsActive = isViewportHovered || ActiveTool;
+	ImVec2 mousePos = ImGui::GetMousePos();
+	ImVec2 winPos = ImGui::GetWindowPos();
+	ImVec2 curPos = ImGui::GetCursorPos();
+	localCursorPos = glm::vec2(
+		mousePos.x - winPos.x - curPos.x,
+		mousePos.y - winPos.y - curPos.y
+	);
+	
+	if (ActiveTool) {
+		ImDrawList* drawList = ImGui::GetForegroundDrawList();
+		drawList->PushClipRect(ImVec2(winPos.x + curPos.x, winPos.y + curPos.y), ImVec2(winPos.x + viewportWidth + curPos.x, winPos.y + viewportHeight + curPos.y), true);
+		//draw locked axis lines
+		//TODO: draw axis line using openGL, it's easier an will allow for clipping on plane
+		//Draw line from center of object to mouse
+		if (ActiveTool == Scale || ActiveTool == Rotate) {
+			glm::vec3 projected = glm::project(
+				selectedMesh->Translation,
+				viewportCamera->GetViewMatrix(),
+				Projection,
+				glm::vec4(0, 0, viewportWidth, viewportHeight)
+			);
+			ImVec2 selectedPosition = ImVec2(projected.x + winPos.x + curPos.x, viewportHeight - projected.y + winPos.y + curPos.y);
+			drawList->AddLine(
+				selectedPosition,
+				//TODO: math.max and min this position so it doesn't draw over viewport
+				ImVec2(localCursorPos.x + winPos.x + curPos.x, localCursorPos.y + winPos.y + curPos.y),
+				IM_COL32(255, 255, 255, 255)
+			);
+		}
+		localCursorPos = glm::mod(localCursorPos + glm::vec2(viewportWidth, viewportHeight),
+			glm::vec2(viewportWidth, viewportHeight));
+		drawList->AddCircleFilled(
+			ImVec2(localCursorPos.x + winPos.x + curPos.x, localCursorPos.y + winPos.y + curPos.y),
+			5.0f,
+			IM_COL32(255, 255, 255, 255));
+		drawList->AddCircle(
+			ImVec2(localCursorPos.x + winPos.x + curPos.x, localCursorPos.y + winPos.y + curPos.y),
+			5.0f,
+			IM_COL32(0, 0, 0, 255));
+		drawList->PopClipRect();
+	}
+
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	glViewport(0, 0, viewportWidth, viewportHeight);
 	glEnable(GL_DEPTH_TEST);
@@ -118,7 +173,6 @@ void Viewport::Draw() {
 
 void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	//TODO: fix bug where scale or transform will suddenly jump to mouse pos. Not sure what causes it yet.
 	if (firstMouse)
 	{
 		lastX = xpos;
@@ -128,52 +182,101 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 
 	float xoffset = xpos - lastX;
 	float yoffset = lastY - ypos;
-	lastX = xpos;
-	lastY = ypos;
 	
 	if (ActiveTool != None) {
 		//TODO: wrap mouse cursor and draw it
 		//
 		//
-		glm::vec4 vp(0.0f, 0.0f, (float)viewportWidth, (float)viewportHeight);
-		glm::vec3 delta = ScreenDeltaToWorldDelta(xpos, ypos, xoffset, -yoffset,
-			viewportCamera->GetViewMatrix(),
-			Projection,
-			vp,
-			selectedMesh->Translation);
 		switch (ActiveTool) {
-		case Translate:
+		case Translate: {
+			glm::vec4 vp(0.0f, 0.0f, (float)viewportWidth, (float)viewportHeight);
+			glm::vec3 delta = ScreenDeltaToWorldDelta(xpos, ypos, xoffset, -yoffset,
+				viewportCamera->GetViewMatrix(),
+				Projection,
+				vp,
+				selectedMesh->Translation);
+			if (transformAxis != glm::vec3(0.0f)) {
+				delta *= transformAxis;
+			}
 			selectedMesh->Translation += delta;
 			break;
+		}
 		case Scale: {
+			if (firstScaleUpdate) {
+				firstScaleUpdate = false;
+				glm::vec3 projected = glm::project(
+					selectedMesh->Translation,
+					viewportCamera->GetViewMatrix(),
+					Projection,
+					glm::vec4(0, 0, viewportWidth, viewportHeight)
+				);
+				glm::vec2 objectScreenPos(projected.x, projected.y);
+				scaleStartDistance = glm::length(glm::vec2(lastX, lastY) - objectScreenPos);
+				break;
+			}
+			//project mesh origin to screen space
 			glm::vec3 projected = glm::project(
 				selectedMesh->Translation,
 				viewportCamera->GetViewMatrix(),
 				Projection,
 				glm::vec4(0, 0, viewportWidth, viewportHeight)
 			);
-			float screenY = viewportHeight - projected.y;
-			glm::vec2 objectScreenPos(projected.x, screenY);
+			glm::vec2 objectScreenPos(projected.x, projected.y);
 
-			// Compute current distance from mouse to object center
-			glm::vec2 currentMouse(xpos, ypos);
-			float currentDistance = glm::length(currentMouse - objectScreenPos);
+			// Use camera front direction to determine scaling sign
+			glm::vec3 camToObj = glm::normalize(selectedMesh->Translation - viewportCamera->ZoomPosition);
+			float viewSign = glm::dot(camToObj, viewportCamera->Front) > 0 ? 1.0f : -1.0f;
 
-			// Prevent divide-by-zero
-			if (scaleStartDistance > 1e-5f) {
-				// Ratio determines scale
-				float scaleFactor = currentDistance / scaleStartDistance;
+			float currentDistance = glm::length(glm::vec2(xpos, ypos) - objectScreenPos);
+			float delta = (currentDistance - scaleStartDistance) * viewSign;
 
-				// Apply relative to starting scale
-				selectedMesh->Scale = selectedTransform * scaleFactor;
+			float scaleFactor = 1.0f + delta * 0.005f; // sensitivity tweak
+
+			if (transformAxis != glm::vec3(0.0f)) {
+				selectedMesh->Scale = selectedTransform * (glm::vec3(1.0f) - transformAxis) + selectedTransform * transformAxis * scaleFactor;
 			}
+			else
+				selectedMesh->Scale = selectedTransform * scaleFactor;
 
 			selectedMesh->transformDirty = true;
 			break;
 			}
-		case Rotate:
+		case Rotate: {
 			//TODO: get 2D vector of mouse position relative to center of object, calculate angle of change between intial mouse vector and moved mouse relative to center of object
+			if (firstRotationUpdate) {
+				rotationStartPos = glm::vec2(lastX, lastY);
+				firstRotationUpdate = false;
+				accumulatedRotation = 0.0;
+				break;
+			}
+			glm::vec3 projected = glm::project(
+				selectedMesh->Translation,
+				viewportCamera->GetViewMatrix(),
+				Projection,
+				glm::vec4(0, 0, viewportWidth, viewportHeight)
+			);
+			glm::vec2 objectScreenPos(projected.x, projected.y);
+
+			glm::vec2 objectToStart = glm::vec2(lastX, lastY) - objectScreenPos;
+			glm::vec2 objectToNew = glm::vec2(xpos, ypos) - objectScreenPos;
+			float sign = glm::sign(objectToStart.x * objectToNew.y - objectToStart.y * objectToNew.x);
+			float angle = glm::angle(glm::normalize(objectToStart), glm::normalize(objectToNew));
+
+			// Use camera front direction to determine scaling sign
+			glm::vec3 camToObj = glm::normalize(selectedMesh->Translation - viewportCamera->ZoomPosition);
+			float viewSign = glm::dot(camToObj, viewportCamera->Front) > 0 ? 1.0f : -1.0f;
+
+			accumulatedRotation += angle * sign;
+			glm::mat4 rotationMatrix; 
+			if (transformAxis != glm::vec3(0.0f)) {
+				rotationMatrix = glm::rotate(glm::mat4(1.0f), accumulatedRotation, transformAxis);
+			} 
+			else
+				rotationMatrix = glm::rotate(glm::mat4(1.0f), accumulatedRotation, viewportCamera->Front);
+			glm::vec3 deltaEuler = glm::degrees(glm::eulerAngles(glm::quat_cast(rotationMatrix)));
+			selectedMesh->Rotation = selectedTransform + deltaEuler;
 			break;
+		}
 		}
 		selectedMesh->transformDirty = true;
 	}
@@ -187,6 +290,8 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 	}
 	else
 		firstMouse = true;
+	lastX = xpos;
+	lastY = ypos;
 }
 
 void Viewport::scroll_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -236,6 +341,7 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 		return;
 	if (transformKeyMappings.count(key)) {
 		SetActiveTool(window, transformKeyMappings[key]);
+		return;
 	}
 	switch (key) {
 	case GLFW_KEY_F:
@@ -246,6 +352,26 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 		break;
 	case GLFW_KEY_ENTER:
 		SetActiveTool(window, None, false);
+		break;
+	case GLFW_KEY_X:
+		if (ActiveTool) {
+			transformAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+			UndoTransform();
+		}
+		else
+			DeleteMesh(selectedMesh);
+		break;
+	case GLFW_KEY_Y:
+		if (ActiveTool) {
+			transformAxis = glm::vec3(0.0f, 1.0f, 0.0f);
+			UndoTransform();
+		}
+		break;
+	case GLFW_KEY_Z:
+		if (ActiveTool) {
+			transformAxis = glm::vec3(0.0f, 0.0f, 1.0f);
+			UndoTransform();
+		}
 		break;
 	}
 }
@@ -298,30 +424,22 @@ void Viewport::SetActiveTool(GLFWwindow* window, TransformTool activeTool, bool 
 		UndoTransform();
 	}
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	firstMouse = true;
 	switch (activeTool) {
 	case Rotate:
+		firstRotationUpdate = true;
 		selectedTransform = selectedMesh->Rotation;
 		break;
 	case Translate:
-		//TODO: set mouse cursor with glfw, imgui resets it every frame
-		//ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
 		selectedTransform = selectedMesh->Translation;
 		break;
-	case Scale:
-		//get initial mouse pos, and initial 
-		glm::vec3 projected = glm::project(
-			selectedMesh->Translation,
-			viewportCamera->GetViewMatrix(),
-			Projection,
-			glm::vec4(0, 0, viewportWidth, viewportHeight)
-		);
-		glm::vec2 objectScreenPos(projected.x, projected.y);
-		scaleStartDistance = glm::length(glm::vec2(lastX, lastY) - objectScreenPos);
+	case Scale: {
+		firstScaleUpdate = true;
 		selectedTransform = selectedMesh->Scale;
 		break;
+	}
 	case None:
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		transformAxis = glm::vec3(0.0f);
 		break;
 	}
 	ActiveTool = activeTool;

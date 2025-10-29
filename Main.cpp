@@ -67,7 +67,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void DrawToolWindow() {
 	ImGui::Begin("Tools");
 
-
+	//export drawing of tabs to viewport
 	if (ImGui::BeginTabBar("Mesh Tools"))
 	{
 		if (viewport->selectedMesh) {
@@ -231,17 +231,9 @@ int main()
 		ImGui::End();
 
 		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-		bool isViewportHovered = ImGui::IsWindowHovered();
-		viewport->IsActive = isViewportHovered || viewport->ActiveTool;
+		
 		ImVec2 size = ImGui::GetContentRegionAvail();
 		viewport->ResizeViewportFramebuffer(size.x, size.y);
-		ImVec2 mousePos = ImGui::GetMousePos(); 
-		ImVec2 winPos = ImGui::GetWindowPos(); 
-		ImVec2 curPos = ImGui::GetCursorPos(); 
-		viewport->localCursorPos = glm::vec2(
-			mousePos.x - winPos.x - curPos.x, 
-			mousePos.y - winPos.y - curPos.y
-		);
 		viewport->Draw();
 		ImGui::Image((ImTextureID)(intptr_t)viewport->fboTexture, size,
 			ImVec2(0, 1), ImVec2(1, 0)); // Flip vertically
