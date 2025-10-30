@@ -1490,6 +1490,26 @@ void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float th
     PathStroke(col, 0, thickness);
 }
 
+void ImDrawList::AddDashedLine(const ImVec2& p1, const ImVec2& p2, ImU32 color, float thickness, float dashLength)
+{
+    ImVec2 vb = p2 - p1;
+    float len = sqrt(vb.x * vb.x + vb.y * vb.y);
+    int numDashes = len / dashLength;
+    ImVec2 vbNormal = len > 0.0f ? ImVec2(vb.x / len, vb.y / len) : ImVec2(0, 0);
+    ImVec2 dashDelta = vbNormal * dashLength;
+    for (int i = 0; i <= numDashes / 2; i++) {
+        float progress = dashLength + dashLength * i * 2;
+        ImVec2 dashStart = p1 + dashDelta * (i * 2);
+        ImVec2 dashEnd = p1 + dashDelta * (i * 2 + 1);
+        if (i == numDashes / 2 && progress > len) {
+            dashEnd = p2;
+        }
+        PathLineTo(dashStart);
+        PathLineTo(dashEnd);
+        PathStroke(color, 0, thickness);
+    }
+}
+
 // p_min = upper-left, p_max = lower-right
 // Note we don't render 1 pixels sized rectangles properly.
 void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags, float thickness)

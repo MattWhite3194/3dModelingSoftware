@@ -3,12 +3,10 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include "imgui.h"
+#include "imgui_impl_glfw.h"
 
-//TODO: transform axis, X, Y, Z
-//TODO: When ActiveTool is not None, make viewport steal all ImGui mouse input so other tabs aren't affected by mouse position
-//TODO: scale is still broken depending on camera orientation
-//TODO: rotation is god awful
-//TODO: fix axis rotation relative to camera orientation
+//TODO: add VAO for axis lines that are the size of the grid, when drawing, draw them with a transform matrix of the selected object, translation if global, translation and rotation if local. 
+//TODO: implement global scaling, right now, all scales apply to the object locally
 
 //TODO: the preceding todos
 //TODO: the above todo
@@ -87,20 +85,41 @@ void Viewport::CreateViewportFramebuffer() {
 }
 
 void Viewport::Draw() {
-	//Draw custom cursor if their is an active tool, doing it here so it draws every frame
+	//Draw custom cursor if there is an active tool, doing it here so it draws every frame
 	bool isViewportHovered = ImGui::IsWindowHovered();
 	IsActive = isViewportHovered || ActiveTool;
 	ImVec2 mousePos = ImGui::GetMousePos();
-	ImVec2 winPos = ImGui::GetWindowPos();
-	ImVec2 curPos = ImGui::GetCursorPos();
+	imguiWinPos = ImGui::GetWindowPos();
+	imguiCurPos = ImGui::GetCursorPos();
 	localCursorPos = glm::vec2(
-		mousePos.x - winPos.x - curPos.x,
-		mousePos.y - winPos.y - curPos.y
+		mousePos.x - imguiWinPos.x - imguiCurPos.x,
+		mousePos.y - imguiWinPos.y - imguiCurPos.y
 	);
 	
 	if (ActiveTool) {
 		ImDrawList* drawList = ImGui::GetForegroundDrawList();
-		drawList->PushClipRect(ImVec2(winPos.x + curPos.x, winPos.y + curPos.y), ImVec2(winPos.x + viewportWidth + curPos.x, winPos.y + viewportHeight + curPos.y), true);
+		drawList->AddText(ImVec2(imguiWinPos.x + 10, imguiWinPos.y + 10), IM_COL32_WHITE, transformVisualText.c_str());
+		//Consume all mouse input -- hopefully
+		//create full screen transparent window to steal all input
+		ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(main_viewport->Pos);
+		ImGui::SetNextWindowSize(main_viewport->Size);
+		ImGui::SetNextWindowViewport(main_viewport->ID);
+		ImGui::SetNextWindowBgAlpha(0.0f); // Dim background
+
+		ImGui::Begin("InputBlocker", nullptr,
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoDocking |
+			ImGuiWindowFlags_NoNav);
+
+		
+		ImGui::End();
+		// Make sure it's topmost and focused
+		ImGui::SetWindowFocus("InputBlocker");
+		
+		drawList->PushClipRect(ImVec2(imguiWinPos.x + imguiCurPos.x, imguiWinPos.y + imguiCurPos.y), ImVec2(imguiWinPos.x + viewportWidth + imguiCurPos.x, imguiWinPos.y + viewportHeight + imguiCurPos.y), true);
 		//draw locked axis lines
 		//TODO: draw axis line using openGL, it's easier an will allow for clipping on plane
 		//Draw line from center of object to mouse
@@ -111,22 +130,22 @@ void Viewport::Draw() {
 				Projection,
 				glm::vec4(0, 0, viewportWidth, viewportHeight)
 			);
-			ImVec2 selectedPosition = ImVec2(projected.x + winPos.x + curPos.x, viewportHeight - projected.y + winPos.y + curPos.y);
-			drawList->AddLine(
-				selectedPosition,
-				//TODO: math.max and min this position so it doesn't draw over viewport
-				ImVec2(localCursorPos.x + winPos.x + curPos.x, localCursorPos.y + winPos.y + curPos.y),
-				IM_COL32(255, 255, 255, 255)
-			);
+			ImVec2 selectedPosition(projected.x + imguiWinPos.x + imguiCurPos.x, viewportHeight - projected.y + imguiWinPos.y + imguiCurPos.y);
+			ImVec2 mousePos(localCursorPos.x + imguiWinPos.x + imguiCurPos.x, localCursorPos.y + imguiWinPos.y + imguiCurPos.y);
+			drawList->AddDashedLine(selectedPosition, mousePos, IM_COL32(255, 255, 255, 255));
 		}
-		localCursorPos = glm::mod(localCursorPos + glm::vec2(viewportWidth, viewportHeight),
+		glm::vec2 wrappedCursorPos = glm::mod(localCursorPos + glm::vec2(viewportWidth, viewportHeight),
 			glm::vec2(viewportWidth, viewportHeight));
 		drawList->AddCircleFilled(
-			ImVec2(localCursorPos.x + winPos.x + curPos.x, localCursorPos.y + winPos.y + curPos.y),
+			ImVec2(wrappedCursorPos.x + imguiWinPos.x + imguiCurPos.x, wrappedCursorPos.y + imguiWinPos.y + imguiCurPos.y),
 			5.0f,
 			IM_COL32(255, 255, 255, 255));
 		drawList->AddCircle(
-			ImVec2(localCursorPos.x + winPos.x + curPos.x, localCursorPos.y + winPos.y + curPos.y),
+			ImVec2(wrappedCursorPos.x + imguiWinPos.x + imguiCurPos.x, wrappedCursorPos.y + imguiWinPos.y + imguiCurPos.y),
+			5.0f,
+			IM_COL32(0, 0, 0, 255));
+		drawList->AddCircle(
+			ImVec2(wrappedCursorPos.x + imguiWinPos.x + imguiCurPos.x, wrappedCursorPos.y + imguiWinPos.y + imguiCurPos.y),
 			5.0f,
 			IM_COL32(0, 0, 0, 255));
 		drawList->PopClipRect();
@@ -173,6 +192,14 @@ void Viewport::Draw() {
 
 void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
+	//offsetting the cursor position since any projected objects will be calculated relative to the window being at (0, 0)
+	xpos = xpos - imguiWinPos.x - imguiCurPos.x;
+	ypos = ypos - imguiWinPos.y; - imguiCurPos.y;
+	if (ignoreNextMouseDelta) {
+		ignoreNextMouseDelta = false;
+		return;
+	}
+	//std::cout << xpos << ", " << ypos << std::endl;
 	if (firstMouse)
 	{
 		lastX = xpos;
@@ -184,21 +211,45 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 	float yoffset = lastY - ypos;
 	
 	if (ActiveTool != None) {
-		//TODO: wrap mouse cursor and draw it
-		//
-		//
 		switch (ActiveTool) {
 		case Translate: {
 			glm::vec4 vp(0.0f, 0.0f, (float)viewportWidth, (float)viewportHeight);
-			glm::vec3 delta = ScreenDeltaToWorldDelta(xpos, ypos, xoffset, -yoffset,
-				viewportCamera->GetViewMatrix(),
-				Projection,
-				vp,
-				selectedMesh->Translation);
+			glm::vec3 delta;
 			if (transformAxis != glm::vec3(0.0f)) {
-				delta *= transformAxis;
+				glm::vec3 axisWorld = glm::normalize(transformAxis);
+
+				// Project object center and point along axis to screen space
+				glm::vec3 p0 = selectedTransform;
+				glm::vec3 p1 = selectedTransform + axisWorld;
+
+				glm::vec3 proj0 = glm::project(p0, viewportCamera->GetViewMatrix(), Projection, vp);
+				glm::vec3 proj1 = glm::project(p1, viewportCamera->GetViewMatrix(), Projection, vp);
+
+				//Get normalized direction of axis in screen space
+				glm::vec2 axisScreenDir = glm::normalize(glm::vec2(proj1 - proj0));
+
+				//get the vector of the mouse movement
+				glm::vec2 mouseDelta(xoffset, yoffset);
+
+				//dot product is how similar the vector of the mouse movement is to the projected axis direction
+				float movementAlongAxis = glm::dot(mouseDelta, axisScreenDir);
+
+				float distance = glm::distance(selectedMesh->Translation, viewportCamera->ZoomPosition);
+
+				std::cout << distance << std::endl;
+
+				float sensitivity = 0.001f * distance;
+				delta = axisWorld * movementAlongAxis * sensitivity;
+			}
+			else {
+				delta = ScreenDeltaToWorldDelta(xpos, ypos, xoffset, -yoffset,
+					viewportCamera->GetViewMatrix(),
+					Projection,
+					vp,
+					selectedTransform);
 			}
 			selectedMesh->Translation += delta;
+			transformVisualText = "Move: " + glm::to_string(selectedMesh->Translation - selectedTransform);
 			break;
 		}
 		case Scale: {
@@ -210,10 +261,11 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 					Projection,
 					glm::vec4(0, 0, viewportWidth, viewportHeight)
 				);
-				glm::vec2 objectScreenPos(projected.x, projected.y);
-				scaleStartDistance = glm::length(glm::vec2(lastX, lastY) - objectScreenPos);
+				glm::vec2 objectScreenPos(projected.x, viewportHeight - projected.y);
+				scaleStartDistance = glm::length(glm::vec2(xpos, ypos) - objectScreenPos);
 				break;
 			}
+			
 			//project mesh origin to screen space
 			glm::vec3 projected = glm::project(
 				selectedMesh->Translation,
@@ -221,15 +273,13 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 				Projection,
 				glm::vec4(0, 0, viewportWidth, viewportHeight)
 			);
-			glm::vec2 objectScreenPos(projected.x, projected.y);
+			glm::vec2 objectScreenPos(projected.x, viewportHeight - projected.y);
 
 			// Use camera front direction to determine scaling sign
 			glm::vec3 camToObj = glm::normalize(selectedMesh->Translation - viewportCamera->ZoomPosition);
-			float viewSign = glm::dot(camToObj, viewportCamera->Front) > 0 ? 1.0f : -1.0f;
 
 			float currentDistance = glm::length(glm::vec2(xpos, ypos) - objectScreenPos);
-			float delta = (currentDistance - scaleStartDistance) * viewSign;
-
+			float delta = (currentDistance - scaleStartDistance);
 			float scaleFactor = 1.0f + delta * 0.005f; // sensitivity tweak
 
 			if (transformAxis != glm::vec3(0.0f)) {
@@ -238,11 +288,14 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 			else
 				selectedMesh->Scale = selectedTransform * scaleFactor;
 
+			transformVisualText = "Scale: " + std::to_string(scaleFactor);
+
 			selectedMesh->transformDirty = true;
 			break;
 			}
 		case Rotate: {
 			//TODO: get 2D vector of mouse position relative to center of object, calculate angle of change between intial mouse vector and moved mouse relative to center of object
+			//This is because either the object projected vector or mouse vector is not accounting for the padding and header on the window (Thanks ImGui for making this extremely difficult
 			if (firstRotationUpdate) {
 				rotationStartPos = glm::vec2(lastX, lastY);
 				firstRotationUpdate = false;
@@ -255,26 +308,31 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 				Projection,
 				glm::vec4(0, 0, viewportWidth, viewportHeight)
 			);
-			glm::vec2 objectScreenPos(projected.x, projected.y);
+			glm::vec2 objectScreenPos(projected.x - 0.5f, viewportHeight - projected.y);
 
 			glm::vec2 objectToStart = glm::vec2(lastX, lastY) - objectScreenPos;
-			glm::vec2 objectToNew = glm::vec2(xpos, ypos) - objectScreenPos;
+			glm::vec2 objectToNew = (glm::vec2(xpos, ypos) - objectScreenPos);
+
 			float sign = glm::sign(objectToStart.x * objectToNew.y - objectToStart.y * objectToNew.x);
 			float angle = glm::angle(glm::normalize(objectToStart), glm::normalize(objectToNew));
 
-			// Use camera front direction to determine scaling sign
-			glm::vec3 camToObj = glm::normalize(selectedMesh->Translation - viewportCamera->ZoomPosition);
-			float viewSign = glm::dot(camToObj, viewportCamera->Front) > 0 ? 1.0f : -1.0f;
-
+			//std::cout << glm::to_string(objectToStart) << ", " << glm::to_string(objectToNew) << std::endl;
 			accumulatedRotation += angle * sign;
+			//std::cout << accumulatedRotation << std::endl;
 			glm::mat4 rotationMatrix; 
 			if (transformAxis != glm::vec3(0.0f)) {
-				rotationMatrix = glm::rotate(glm::mat4(1.0f), accumulatedRotation, transformAxis);
+				//multiply axis translation by the sign of the direction the camera is pointing towards relative to that axis -- what if it's zero?
+				glm::vec3 axisViewSign = glm::sign(viewportCamera->Front) * transformAxis;
+				std::cout << glm::to_string(axisViewSign) << std::endl;
+				if (axisViewSign == glm::vec3(0.0f))
+					axisViewSign = transformAxis;
+				rotationMatrix = glm::rotate(glm::mat4(1.0f), accumulatedRotation, axisViewSign);
 			} 
 			else
 				rotationMatrix = glm::rotate(glm::mat4(1.0f), accumulatedRotation, viewportCamera->Front);
 			glm::vec3 deltaEuler = glm::degrees(glm::eulerAngles(glm::quat_cast(rotationMatrix)));
 			selectedMesh->Rotation = selectedTransform + deltaEuler;
+			transformVisualText = "Rotate: " + glm::to_string(deltaEuler);
 			break;
 		}
 		}
@@ -423,7 +481,24 @@ void Viewport::SetActiveTool(GLFWwindow* window, TransformTool activeTool, bool 
 	if (ActiveTool != None && undoCurrent) {
 		UndoTransform();
 	}
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//set it here instead of duplicating in every switch case
+	double mouseX, mouseY;
+	if (activeTool != None) {
+		glfwGetCursorPos(window, &mouseX, &mouseY);
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		if (glfwRawMouseMotionSupported())
+			glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+		else
+			std::cout << "Raw mouse input not supported." << std::endl;
+		//flush mouse buffer to clear any lingering inputs to prevent mouse from turning into a rocket ship
+		ignoreNextMouseDelta = true;
+		glfwPollEvents();
+		glfwSetCursorPos(window, mouseX, mouseY);
+		ImGui_ImplGlfw_CursorPosCallback(window, mouseX, mouseY);
+	}
+
+	//reset ImGui's cursor pos as well to remove brief single frame mouse spike.
+
 	switch (activeTool) {
 	case Rotate:
 		firstRotationUpdate = true;
@@ -439,6 +514,8 @@ void Viewport::SetActiveTool(GLFWwindow* window, TransformTool activeTool, bool 
 	}
 	case None:
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		if (glfwRawMouseMotionSupported())
+			glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
 		transformAxis = glm::vec3(0.0f);
 		break;
 	}

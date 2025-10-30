@@ -86,6 +86,9 @@
     <ClInclude Include="imgui_theme.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="imgui_vector_math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="objectFrag.frag">

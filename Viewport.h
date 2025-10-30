@@ -11,6 +11,7 @@
 #include "Face.h"
 #include "Camera.h"
 #include <GLFW/glfw3.h>
+#include "imgui_internal.h"
 
 enum TransformTool {
 	None = 0,
@@ -36,6 +37,8 @@ public:
 	glm::mat4 Projection;
 	glm::vec3 viewportLight = glm::vec3(1.2f, 1.0f, 10.0f);
 	glm::vec2 rotationStartPos;
+	ImVec2 imguiWinPos = ImVec2(0.0f, 0.0f);
+	ImVec2 imguiCurPos = ImVec2(0.0f, 0.0f);
 	glm::vec3 transformAxis = glm::vec3(0.0f);
 	const int GRID_SIZE = 20;
 	double lastX, lastY;
@@ -44,9 +47,10 @@ public:
 	bool forceMeshTab = false;
 	bool firstScaleUpdate = false;
 	bool firstRotationUpdate = false;
-	bool transformAxisLocked = false;
+	bool ignoreNextMouseDelta = false;
 	float accumulatedRotation = 0.0;
 	TransformTool ActiveTool = None;
+	std::string transformVisualText;
 
 	Viewport() {
 		InitGrid();
