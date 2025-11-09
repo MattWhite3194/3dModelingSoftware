@@ -318,3 +318,24 @@ void Mesh::DrawEdges(Shader& shader) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
+
+void Mesh::OriginToGeometry() {
+    int numVertices = vertices.size();
+    glm::vec3 cumulativePosition = glm::vec3(0.0f);
+    for (auto& v : vertices) {
+        cumulativePosition += v->position;
+    }
+    LocalOrigin = cumulativePosition / (float)numVertices;
+}
+
+void Mesh::ClearGPU() {
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &eboEdges);
+}
+
+glm::vec3 Mesh::GetGlobalOrigin() {
+
+    return glm::vec3(Model * glm::vec4(LocalOrigin, 1.0f));
+}

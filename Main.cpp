@@ -31,6 +31,11 @@ ImGuiWindowFlags_NoBackground | // remove gray background
 ImGuiWindowFlags_NoScrollWithMouse | // stop scroll detection inside dockspace
 ImGuiWindowFlags_NoScrollbar;
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+}
+
 void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
 	ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
@@ -172,13 +177,11 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
 	ImGui_ImplOpenGL3_Init("#version 130");
 
-	//process loop
-	glfwMakeContextCurrent(window);
-
 	//initiate viewport
 	viewport = new Viewport();
 	viewport->CreateViewportFramebuffer();
 	//set button callbacks
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window, cursor_pos_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -244,9 +247,6 @@ int main()
 		DrawToolWindow();
 
 		ImGui::Render();
-		int display_w, display_h;
-		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, display_w, display_h);
 		glClearColor(0.2f, 0.2f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

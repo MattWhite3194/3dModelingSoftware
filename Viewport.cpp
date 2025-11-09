@@ -5,12 +5,10 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 
+//BUG: transforming a mesh, stopping the mouse, right clicking, don't move the mouse, active transform tool, move the mouse
 //TODO: add VAO for axis lines that are the size of the grid, when drawing, draw them with a transform matrix of the selected object, translation if global, translation and rotation if local. 
 //TODO: implement global scaling, right now, all scales apply to the object locally
 
-//TODO: the preceding todos
-//TODO: the above todo
-//TODO: stop writing todo
 void Viewport::InitGrid() {
 	float gridPlane[12] = {
 		-1, -1, 0,
@@ -95,9 +93,10 @@ void Viewport::Draw() {
 		mousePos.x - imguiWinPos.x - imguiCurPos.x,
 		mousePos.y - imguiWinPos.y - imguiCurPos.y
 	);
-	
+	ImDrawList* drawList = ImGui::GetForegroundDrawList();
+	drawList->PushClipRect(ImVec2(imguiWinPos.x + imguiCurPos.x, imguiWinPos.y + imguiCurPos.y), ImVec2(imguiWinPos.x + viewportWidth + imguiCurPos.x, imguiWinPos.y + viewportHeight + imguiCurPos.y), true);
 	if (ActiveTool) {
-		ImDrawList* drawList = ImGui::GetForegroundDrawList();
+		
 		drawList->AddText(ImVec2(imguiWinPos.x + 10, imguiWinPos.y + 10), IM_COL32_WHITE, transformVisualText.c_str());
 		//Consume all mouse input -- hopefully
 		//create full screen transparent window to steal all input
@@ -119,7 +118,7 @@ void Viewport::Draw() {
 		// Make sure it's topmost and focused
 		ImGui::SetWindowFocus("InputBlocker");
 		
-		drawList->PushClipRect(ImVec2(imguiWinPos.x + imguiCurPos.x, imguiWinPos.y + imguiCurPos.y), ImVec2(imguiWinPos.x + viewportWidth + imguiCurPos.x, imguiWinPos.y + viewportHeight + imguiCurPos.y), true);
+		
 		//draw locked axis lines
 		//TODO: draw axis line using openGL, it's easier an will allow for clipping on plane
 		//Draw line from center of object to mouse
@@ -148,8 +147,32 @@ void Viewport::Draw() {
 			ImVec2(wrappedCursorPos.x + imguiWinPos.x + imguiCurPos.x, wrappedCursorPos.y + imguiWinPos.y + imguiCurPos.y),
 			5.0f,
 			IM_COL32(0, 0, 0, 255));
-		drawList->PopClipRect();
 	}
+
+	//Draw selected origin
+	if (selectedMesh) {
+		glm::vec3 projectedOrigin = glm::project(
+			selectedMesh->GetGlobalOrigin(),
+			viewportCamera->GetViewMatrix(),
+			Projection,
+			glm::vec4(0, 0, viewportWidth, viewportHeight)
+		);
+		ImVec2 screenSpaceOrigin(projectedOrigin.x + imguiWinPos.x + imguiCurPos.x, viewportHeight - projectedOrigin.y + imguiWinPos.y + imguiCurPos.y);
+		drawList->AddCircleFilled(screenSpaceOrigin, 3.0f, IM_COL32(0, 247, 255, 255));
+	}
+
+	//Draw 3d cursor
+	glm::vec3 projectedCursor = glm::project(
+		cursor3D,
+		viewportCamera->GetViewMatrix(),
+		Projection,
+		glm::vec4(0, 0, viewportWidth, viewportHeight)
+	);
+	ImVec2 screenSpaceCursor(projectedCursor.x + imguiWinPos.x + imguiCurPos.x, viewportHeight - projectedCursor.y + imguiWinPos.y + imguiCurPos.y);
+	drawList->AddCircle(screenSpaceCursor, 15.0f, IM_COL32(0, 0, 0, 255));
+	drawList->AddLine(ImVec2(screenSpaceCursor.x - 17.0f, screenSpaceCursor.y), ImVec2(screenSpaceCursor.x + 17.0f, screenSpaceCursor.y), IM_COL32(255, 0, 0, 255), 2.0f);
+	drawList->AddLine(ImVec2(screenSpaceCursor.x, screenSpaceCursor.y - 17.0f), ImVec2(screenSpaceCursor.x, screenSpaceCursor.y + 17.0f), IM_COL32(0, 255, 0, 255), 2.0f);
+	drawList->PopClipRect();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	glViewport(0, 0, viewportWidth, viewportHeight);
@@ -173,7 +196,7 @@ void Viewport::Draw() {
 	edgeShader->setMat4("model", glm::mat4(1.0f));
 	edgeShader->setVec2("viewportSize", glm::vec2(viewportWidth, viewportHeight));
 
-	for (const auto& mesh : sceneMeshes) {
+	for (const auto& mesh : sceneMeshes) {	
 		mesh->Draw(*objectShader);
 		mesh->DrawEdges(*edgeShader);
 	}
@@ -236,7 +259,7 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 
 				float distance = glm::distance(selectedMesh->Translation, viewportCamera->ZoomPosition);
 
-				std::cout << distance << std::endl;
+				//std::cout << distance << std::endl;
 
 				float sensitivity = 0.001f * distance;
 				delta = axisWorld * movementAlongAxis * sensitivity;
@@ -323,7 +346,7 @@ void Viewport::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 			if (transformAxis != glm::vec3(0.0f)) {
 				//multiply axis translation by the sign of the direction the camera is pointing towards relative to that axis -- what if it's zero?
 				glm::vec3 axisViewSign = glm::sign(viewportCamera->Front) * transformAxis;
-				std::cout << glm::to_string(axisViewSign) << std::endl;
+				//std::cout << glm::to_string(axisViewSign) << std::endl;
 				if (axisViewSign == glm::vec3(0.0f))
 					axisViewSign = transformAxis;
 				rotationMatrix = glm::rotate(glm::mat4(1.0f), accumulatedRotation, axisViewSign);
@@ -394,6 +417,25 @@ void Viewport::mouse_button_callback(GLFWwindow* window, int button, int action,
 
 void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 
+	//Shift held keys
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+		switch (key) {
+		case GLFW_KEY_D:
+			//duplicate mesh
+			if (selectedMesh) {
+				DuplicateMesh(selectedMesh);
+				SetActiveTool(window, Translate, true);
+			}
+			break;
+		case GLFW_KEY_S: 
+			//set 3D cursor to selected origin
+			if (selectedMesh) {
+				glm::vec3 selectedOrigin = selectedMesh->GetGlobalOrigin();
+				cursor3D = selectedOrigin;
+			}
+		}
+		return;
+	}
 	//active mesh keys
 	if (!selectedMesh || action != GLFW_PRESS)
 		return;
@@ -416,8 +458,6 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 			transformAxis = glm::vec3(1.0f, 0.0f, 0.0f);
 			UndoTransform();
 		}
-		else
-			DeleteMesh(selectedMesh);
 		break;
 	case GLFW_KEY_Y:
 		if (ActiveTool) {
@@ -436,6 +476,8 @@ void Viewport::key_callback(GLFWwindow* window, int key, int scancode, int actio
 
 void Viewport::AddMesh(std::unique_ptr<Mesh> mesh) {
 	Mesh* newSelected = mesh.get();
+	mesh->Translation = cursor3D;
+	mesh->transformDirty = true;
 	sceneMeshes.push_back(std::move(mesh));
 	SetSelected(newSelected);
 }
@@ -450,6 +492,10 @@ void Viewport::DeleteMesh(Mesh* mesh) {
 		sceneMeshes.erase(it);
 	}
 	selectedMesh = nullptr;
+}
+
+void Viewport::DuplicateMesh(Mesh* mesh) {
+	AddMesh(std::make_unique<Mesh>(mesh->Clone()));
 }
 
 void Viewport::SetSelected(Mesh* mesh) {

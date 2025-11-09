@@ -51,6 +51,7 @@ public:
 	float accumulatedRotation = 0.0;
 	TransformTool ActiveTool = None;
 	std::string transformVisualText;
+	glm::vec3 cursor3D = glm::vec3(0.0f);
 
 	Viewport() {
 		InitGrid();
@@ -79,6 +80,8 @@ public:
 	void AddMesh(std::unique_ptr<Mesh> mesh);
 
 	void DeleteMesh(Mesh* mesh);
+
+	void DuplicateMesh(Mesh* mesh);
 
 	void SetSelected(Mesh* mesh);
 

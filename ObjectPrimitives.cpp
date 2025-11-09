@@ -27,6 +27,7 @@ std::unique_ptr<Mesh> CreateCube(float size)
     mesh->addFace({ v3, v7, v6, v2 }); // Top (+Y)
     mesh->addFace({ v0, v1, v5, v4 }); // Bottom (-Y)
 
+    mesh->OriginToGeometry();
     return mesh;
 }
 
@@ -53,6 +54,7 @@ std::unique_ptr<Mesh> CreateCylinder(int resolution, float radius, float height)
         int nextBottomIndex = (bottomIndex + 1) % resolution;
         mesh->addFace({ topVertices[nexTopIndex], topVertices[i], bottomVertices[nextBottomIndex], bottomVertices[bottomIndex] });
     }
+    mesh->OriginToGeometry();
     return mesh;
 }
 
@@ -72,6 +74,7 @@ std::unique_ptr<Mesh> CreateCone(int resolution, float radius, float height) {
     for (int i = 0; i < vertices.size(); i++) {
         mesh->addFace({ vertices[i], top, vertices[(i + 1) % resolution] });
     }
+    mesh->OriginToGeometry();
     return mesh;
 }
 
@@ -87,5 +90,6 @@ std::unique_ptr<Mesh> CreateCircle(int resolution, float radius) {
         vertices.push_back(v);
     }
     mesh->addFace(vertices);
+    mesh->OriginToGeometry();
     return mesh;
 }
