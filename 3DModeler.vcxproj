@@ -189,6 +189,7 @@
     <ClInclude Include="Viewport.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="doc\README.md" />
     <None Include="edgeFrag.frag" />
     <None Include="edgeGeom.geom" />
     <None Include="edgeVert.vert" />
@@ -197,7 +198,9 @@
     <None Include="objectFrag.frag" />
     <None Include="packages.config" />
     <None Include="objectVert.vert" />
-    <None Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="doc\SSP.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

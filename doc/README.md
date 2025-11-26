@@ -1,4 +1,4 @@
-# ** Name Pending **  
+# EdgeForm
 
 3D hard surface modeling software created in c++  
 Uses OpenGL for a graphics API  
@@ -10,4 +10,4 @@ The goal is to create a modeling software with a simple set of tools that are ea
 
 The HalfEdge data structure is used to store 3d geometry.
 
-![alt text](3DModeler/doc/CollisionsInventoryPlayer.png?raw=true)
+![alt text](SSP.png?raw=true)

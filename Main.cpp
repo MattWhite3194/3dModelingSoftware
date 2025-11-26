@@ -148,7 +148,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	//create a new glfw window
-	GLFWwindow* window = glfwCreateWindow(1400, 1000, "Doing a frame swap.", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(1400, 1000, "EdgeForm", NULL, NULL);
 	if (window == NULL) {
 		std::cout << "Failed to initialize glfw window";
 		glfwTerminate();

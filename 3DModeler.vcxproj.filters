@@ -16,6 +16,9 @@
     <Filter Include="Resource Files\Shaders">
       <UniqueIdentifier>{6f8b54dc-4ad3-4cb4-a287-e3fd6438a73f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="doc">
+      <UniqueIdentifier>{f7f41f25-a269-46a6-ad9d-40a7a7f2a012}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad.c">
@@ -113,6 +116,13 @@
     <None Include="gridFrag.frag">
       <Filter>Resource Files\Shaders</Filter>
     </None>
-    <None Include="README.md" />
+    <None Include="doc\README.md">
+      <Filter>doc</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="doc\SSP.png">
+      <Filter>doc</Filter>
+    </Image>
   </ItemGroup>
 </Project>
